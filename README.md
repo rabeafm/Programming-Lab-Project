@@ -17,4 +17,5 @@ Important Notes:
 The Assembler's Role is to create a file of machine code from a file written in assembly language. which is the first step in the program cycle towards 
 getting the code which is ready to run on the computer's hardware. next stages are linkage and loading which are not part of this program.
 
-This program is writing an assembler (program that translate to machine language), for a special assembly language defined for the project.
+This program is writing an assembler (program that translate to machine language), for a special assembly language defined for the project. it will be 
+written in ANSI C90.
