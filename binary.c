@@ -19,7 +19,7 @@ int add_data_to_image(int statement_cnt,char *operands,Operand DATA_IMAGE[],int 
 
     strcpy(nums,operands+strspn(operands," \t"));
     if(!isdigit(nums[i]) && nums[i]!='-' && nums[i]!='+'){
-        printf("*** Error in line: %d, data must begin with a digit or +/- character followed by a digit ***\n",statement_cnt,nums[i]);
+        printf("*** Error in line: %d, data must begin with a digit or +/- character followed by a digit ***\n",statement_cnt);
         return NOCHANGE;
     } else { 
         if(!isdigit(nums[i]) && nums[i+1]==','){
