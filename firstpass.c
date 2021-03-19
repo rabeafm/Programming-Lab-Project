@@ -6,7 +6,7 @@
 #include "dict.h"
 
 OperatorDict OpTable[]={
-	/* Order     Funct  OpCode		Order     Funct  OpCode		 Order     Funct  OpCode */
+	/* Order   Dis Src	Funct  OpCode	  Order   Dis Src  Funct  OpCode	 Order   Dis Src  Funct  OpCode */
 	{  "mov" , {0 , 0 , FMOV , MOV }}, {  "cmp" , {0 , 0 , FCMP , CMP }}, {  "add" , {0 , 0 , FADD , ADD }},
 	{  "sub" , {0 , 0 , FSUB , SUB }}, {  "lea" , {0 , 0 , FLEA , LEA }}, {  "clr" , {0 , 0 , FCLR , CLR }},
 	{  "not" , {0 , 0 , FNOT , NOT }}, {  "inc" , {0 , 0 , FINC , INC }}, {  "dec" , {0 , 0 , FDEC , DEC }},
@@ -19,17 +19,17 @@ int Lookup(word){
 	int i;
 	for(i=0;i<16;i++)
 		return 0;
-
 	return 1;
 }
 int firstbincode(){
 	return 0;
 }
 
+
 /* Implementation of first process Functions */
-int firstpass(char *statement,int statement_cnt,int *IC,int *DC,Tlinkptr *head){
-	char label[32]="\0",word[32]="\0",srcoper[10]="\0",trgoper[10]="\0";
-	int label_flag = 0;
+int firstpass(char *statement,int statement_cnt,int *IC,int *DC,Tlinkptr *head,Operand DATA_IMAGE[],MachineOrder CODE_IMAGE[]){
+	char label[32]="\0",word[32]="\0",srcoper[32]="\0",distoper[32]="\0";
+	int label_length = 0;
 	int error_flag = 0;
 	int L=0;
 	
@@ -41,43 +41,45 @@ int firstpass(char *statement,int statement_cnt,int *IC,int *DC,Tlinkptr *head){
 
 	/* Check if the first word is a Label if it is mark the label flag and put the data in the right variables */ 
 	if(isLabel(word)){
-		label_flag=1;			/* Turn On Symbol Definition */
-		L=sscanf(statement,"%s %s %s %s", label, word, srcoper, trgoper)-1; /* Correct Input and update L for possible later use */
+		L=sscanf(statement,"%s %s %s %s", label, word, srcoper, distoper)-1; /* Correct Input and update L for possible later use */
+		label_length=strlen(label);			/* Turn On label flag */
 	} else {
-		L=sscanf(statement,"%s %s %s", word, srcoper, trgoper);
+		L=sscanf(statement,"%s %s %s", word, srcoper, distoper);
 	}
 	
-	/* Check if it is a data or string storage instruction */ 
-	/* Identify data type code in data image and DC+(length of data) */
+	/* Check if it is a data or string storage instruction and call add to data image */ 
 	if(isData(word)) {
-		if(label_flag==1)
+		if(label_length)
 			add_symbol(statement_cnt,label,DC,word,head,&error_flag);
-		if(strstr(statement,","))
-			(*DC)++;
-		(*DC)++;
-		return CHANGED;
+		return add_data_to_image(statement_cnt,strstr(statement,".data")+5,DATA_IMAGE,DC,&error_flag);
 	}
 	if(isString(word)){
-		if(label_flag==1)
+		if(label_length)
 			add_symbol(statement_cnt,label,DC,word,head,&error_flag);
-		(*DC)+=(strlen(srcoper)-1);
-		return CHANGED;
+		return add_string_to_image(statement_cnt,strstr(statement,".string")+7,DATA_IMAGE,DC,&error_flag);
 	}
 
-
-	
+	/* Ignore Enrty*/
 	if(isEntry(word)){
-		printf("Entry\n");
-		return 0;
+		if(label_length)
+			printf("*** Warning in line: %d, the label %s defined before .entry has no meaning and will be ignored. ***\n",statement_cnt,label);
+		return NOCHANGE;
 	}
+
+	/* Handle Extern - should check symbol table issues*/
 	if(isExtern(word)){
-		printf("Extern\n");
-		sscanf(statement,"%s %s",word,label); /* Make label second */
+		if(label_length){
+			printf("*** Warning in line: %d, the label %s defined before .extern has no meaning and will be ignored. ***\n",statement_cnt,label);
+			sscanf(statement,"%s %s %s",srcoper,word,label); /* Make the second the label */
+		} else { 
+			sscanf(statement,"%s %s",word,label); 
+		}
 		add_symbol(statement_cnt,label,DC,word,head,&error_flag);
 		return 0;
 	}
+
 	/*		Then it is an order statement		*/
-	if(label_flag==1){
+	if(label_length){
 		add_symbol(statement_cnt,label,IC,"code",head,&error_flag);
 	}
 	/*if(!Lookup(word)){
@@ -88,11 +90,11 @@ int firstpass(char *statement,int statement_cnt,int *IC,int *DC,Tlinkptr *head){
 /* lookup operator in operator list if doesnt exist report error
 		Analayze operand structure and check and calculate number of words needed ->L */
 
-	firstbincode(*IC,L,word,srcoper,trgoper);/* bincode first word and every infoword in meyade immediate addressing*/
+	firstbincode(*IC,L,word,srcoper,distoper);/* bincode first word and every infoword in meyade immediate addressing*/
 											   /*add to machine code with IC and L*/
 	(*IC)+=L;	/*update IC=IC+L*/
 
-	printf("\t\t\t\t\t %d \t %s \t %s \t %s \n",L,word,srcoper,trgoper);
+	printf("\t\t\t\t\t %d \t %s \t %s \t %s \n",L,word,srcoper,distoper);
 	if (error_flag==3)
 		return 3;
 	return 0;

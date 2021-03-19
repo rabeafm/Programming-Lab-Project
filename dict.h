@@ -1,4 +1,7 @@
 
+#ifndef _DICT_
+#define _DICT_
+
 /*--------------------------------------------------------------*
  *			   Operator / Operand / Machine Order		   		*
  *--------------------------------------------------------------*/
@@ -7,18 +10,18 @@ typedef struct operator {
 	unsigned int src_add: 2;
 	unsigned int funct: 4;
 	unsigned int opcode: 4;
-	char are;
+	unsigned int are :4;
 } Operator;
 
 typedef struct operand {
-	signed int val: 12;
-	char are;	/* .data .string .extern*/
+	unsigned int val: 12;
+	unsigned int are: 4;	/* .data .string .extern*/
 } Operand;
 
 typedef struct machineorder {
 	Operator operator;
-	Operand  src_oper;	/* The content can be code or data - union word {	data_word *data;	code_word *code; } word; data or code flag*/
-	Operand  trg_oper;	
+	Operand  src_data_oper;	/* The content can be code or data - union word {	data_word *data;	code_word *code; } word; data or code flag*/
+	Operand  dist_oper;
 } MachineOrder;
 
 typedef struct operatordict {
@@ -65,6 +68,7 @@ typedef enum {
 
 
 
+#endif
 
 
 

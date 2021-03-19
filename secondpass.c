@@ -8,9 +8,9 @@
 /* Declaring Global Variables and Functions to be used */
 
 int secondpass(char *line,int *IC,int *DC){
-	char label[32],word[32];
-	sscanf(line,"%s",word);
-	if(isLabel(word)){
+	/*char label[32],word[32];
+	sscanf(line,"%s",word);*/
+	/*if(isLabel(word)){
 		sscanf(line,"%s %s",label ,word);
 	}
 	if(isData(word) || isString(word) || isExtern(word)){
@@ -18,11 +18,11 @@ int secondpass(char *line,int *IC,int *DC){
 		return 0;
 	}
 	if(isEntry(word)){
-		printf("Entry \n");
+		printf("Entry \n"); */
 		/* add to symbol table entry attribute to symbol
 		   if symbol not in table give errror */
-		return 0;
-	}
+		/*return 0;
+	}*/
 	/* bincode rest of operand infowords, based on addressing
 	   every operand with symbol  find symbol value from table 
 	   and if not in table give error.

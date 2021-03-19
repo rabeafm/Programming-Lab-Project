@@ -7,15 +7,15 @@
 #include "passes.h"
 
 /* General Constants and Definitions */
-#define MAX_MACHINE_ORDERS 580  /* Based on RAM size 4096 and Each Machine Order is 60 bits aka 6 RAM units */
-#define MAX_DATA_ORDERS 100     /* its 680 from which 580 to machine and 100 for data */
+#define MAX_MACHINE_ORDERS 850  /* Based on RAM size 4096 and Each Machine Order is 48 bits aka 4 RAM units */
+#define MAX_DATA_ORDERS 150     /* its 1024 from which 850 to machine and 150 for data */
 #define MAX_FILENAME_LENGTH 100
 #define MAX_STATEMENT_LENGTH 82
 
 
 /* Code Image / Data Image / Symbol Table / ICF & DCF */
-MachineOrder *CODE_IMAGE[MAX_MACHINE_ORDERS];
-int DATA_IMG[MAX_DATA_ORDERS];
+MachineOrder CODE_IMAGE[MAX_MACHINE_ORDERS];
+Operand DATA_IMAGE[MAX_DATA_ORDERS];
 Tlist SYMB_TABLE = { NULL };
 static int ICF,DCF;
 
@@ -42,7 +42,6 @@ int main(int argc, char *argv[]) {
 int readfile(char *file){
 	FILE *fd;
 	char file_ext[MAX_FILENAME_LENGTH];
-	
 	char statement[MAX_STATEMENT_LENGTH];
 	int statement_cnt=0;
 
@@ -59,7 +58,7 @@ int readfile(char *file){
 	printf("The file %s was found, intiating first pass:\n",file_ext);
 	while(fgets(statement,MAX_STATEMENT_LENGTH,fd)){
 		statement_cnt++;
-		if(firstpass(statement,statement_cnt,&IC,&DC,&(SYMB_TABLE.head))==3){
+		if(firstpass(statement,statement_cnt,&IC,&DC,&(SYMB_TABLE.head),DATA_IMAGE,CODE_IMAGE)==3){
 			printf("Errors were found in first pass of file %s, terminating proccess for this file.",file_ext);
 			fclose(fd);
 			return NOCHANGE;
@@ -72,6 +71,13 @@ int readfile(char *file){
 
 	rewind(fd);
 	printf("First pass of %s finished successuly, intiating second pass:\n",file_ext);
+	/******************************************************************
+	printf("%04d %X%X%X %X\n",100,CODE_IMAGE[0].operator.opcode,CODE_IMAGE[0].operator.funct,CODE_IMAGE[0].operator.src_add*4+CODE_IMAGE[0].operator.dist_add,CODE_IMAGE[0].operator.are);
+	printf("%04d %03X %X\n",101,CODE_IMAGE[0].src_data_oper.val,CODE_IMAGE[0].src_data_oper.are);
+	printf("%04d %03X %d\n",102,CODE_IMAGE[0].dist_oper.val,CODE_IMAGE[0].dist_oper.are);
+	******************************************************************/
+
+
 	while(fgets(statement,MAX_STATEMENT_LENGTH,fd)){
 		secondpass(statement,&IC,&DC);
 	}

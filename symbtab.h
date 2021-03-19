@@ -1,5 +1,5 @@
-#ifndef SYMBTAB
-#define SYMBTAB
+#ifndef _SYMBTAB_
+#define _SYMBTAB_
 
 #define NOCHANGE 0
 #define CHANGED 1
