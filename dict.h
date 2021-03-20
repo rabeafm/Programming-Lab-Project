@@ -28,7 +28,8 @@ typedef union machineorder {
 
 typedef struct operatordict {
 	char key[5];
-	Operator op;
+	unsigned int funct: 4;
+	unsigned int opcode: 4;
 } OperatorDict;
 
 /*----------------------------------------------------------------*
@@ -53,6 +54,7 @@ typedef enum {
 } FunctsDict;
 
 typedef enum {
+	NO_ADD =0,
 	ADD_IMM = 0,	/* 	Immediate 	*/
 	ADD_DIR = 1,	/* 	Direct 		*/
 	ADD_REL = 2,	/*	Relative 	*/

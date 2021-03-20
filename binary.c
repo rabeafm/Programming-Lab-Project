@@ -11,12 +11,12 @@
 #define NUMBER_OF_ORDERS 16
 OperatorDict OpTable[]={
 	/* Order   Dis Src	Funct  OpCode	  Order   Dis Src  Funct  OpCode	 Order   Dis Src  Funct  OpCode */
-	{  "mov" , {31 , 310 , FMOV , MOV }}, {  "cmp" , {310 , 310 , FCMP , CMP }}, {  "add" , {31 , 310 , FADD , ADD }},
-	{  "sub" , {31 , 310 , FSUB , SUB }}, {  "lea" , {31 , 1 , FLEA , LEA }}, {  "clr" , {31 , 0 , FCLR , CLR }},
-	{  "not" , {31 , 0 , FNOT , NOT }}, {  "inc" , {31 , 0 , FINC , INC }}, {  "dec" , {31 , 0 , FDEC , DEC }},
-	{  "jmp" , {21 , 0 , FJMP , JMP }}, {  "bne" , {21 , 0 , FBNE , BNE }}, {  "jsr" , {21 , 0 , FJSR , JSR }},
-	{  "red" , {31 , 0 , FRED , RED }}, {  "prn" , {310 , 0 , FPRN , PRN }}, {  "rts" , {0 , 0 , FRTS , RTS }},
-	{  "stop", {0 , 0 , FSTOP, STOP }}
+	{  "mov" , /*{31 , 310 ,*/ FMOV , MOV }, {  "cmp" , /*{310 , 310 ,*/ FCMP , CMP }, {  "add" , /*{31 , 310 ,*/ FADD , ADD },
+	{  "sub" , /*{31 , 310 ,*/ FSUB , SUB }, {  "lea" , /*{31 , 1 , */FLEA , LEA }, {  "clr" , /*{31 , 0 ,*/ FCLR , CLR },
+	{  "not" , /*{31 , 0 ,*/ FNOT , NOT }, {  "inc" , /*{31 , 0 , */FINC , INC }, {  "dec" , /*{31 , 0 , */FDEC , DEC },
+	{  "jmp" , /*{21 , 0 ,*/ FJMP , JMP }, {  "bne" , /*{21 , 0 , */FBNE , BNE }, {  "jsr" , /*{21 , 0 ,*/ FJSR , JSR },
+	{  "red" , /*{31 , 0 ,*/ FRED , RED }, {  "prn" , /*{310 , 0 , */FPRN , PRN }, {  "rts" , /*{0 , 0 ,*/ FRTS , RTS },
+	{  "stop", /*{0 , 0 ,*/ FSTOP, STOP }
 };
 /* Declaring Global Variables and Functions to be used */
 int LookupinDict(char word[]){
@@ -141,26 +141,26 @@ int makeFirstBinary(MachineOrder CODE_IMAGE[], int statement_cnt,int IC,int L,ch
     order=LookupinDict(word);
     /* works for all */
     CODE_IMAGE[IC].operator.are=0xA;
-    CODE_IMAGE[IC].operator.opcode=OpTable[order].op.opcode;
-    CODE_IMAGE[IC].operator.funct=OpTable[order].op.funct;
+    CODE_IMAGE[IC].operator.opcode=OpTable[order].opcode;
+    CODE_IMAGE[IC].operator.funct=OpTable[order].funct;
     switch(order){
         case 14: case 15:
-            CODE_IMAGE[IC].operator.dist_add=OpTable[order].op.dist_add; /*No Break here*/
+            CODE_IMAGE[IC].operator.dist_add=NO_ADD;                    /*No Break here*/
         case 13:
             if(srcoper[0]=='#'){
-                CODE_IMAGE[IC].operator.dist_add=ADD_IMM;               /*No Break here*/
+                CODE_IMAGE[IC].operator.dist_add=ADD_IMM;               
                 CODE_IMAGE[IC+1].dist_oper.val.sign=atoi(srcoper+1);
-                CODE_IMAGE[IC+1].operator.are=0xA;
+                CODE_IMAGE[IC+1].operator.are=0xA;                      /*No Break here*/
             }
         case 5: case 6: case 7: case 8: case 9: 
         case 10: case 11: case 12: 
-            CODE_IMAGE[IC].operator.src_add=OpTable[order].op.src_add;    
+            CODE_IMAGE[IC].operator.src_add=NO_ADD;    
             break;
         case 1:
             if(distoper[0]=='#'){
-                CODE_IMAGE[IC].operator.dist_add=ADD_IMM;            /*No Break here*/
-                CODE_IMAGE[IC+1].dist_oper.val.sign=atoi(distoper+1);
-                CODE_IMAGE[IC+1].operator.are=0xA;
+                CODE_IMAGE[IC].operator.dist_add=ADD_IMM;               /*No Break here*/
+                CODE_IMAGE[IC+2].dist_oper.val.sign=atoi(distoper+1);
+                CODE_IMAGE[IC+2].operator.are=0xA;
             }
 
         case 0: case 2: case 3: case 4:
@@ -170,6 +170,52 @@ int makeFirstBinary(MachineOrder CODE_IMAGE[], int statement_cnt,int IC,int L,ch
                 CODE_IMAGE[IC+1].operator.are=0xA;
             }
             break;
+    }
+	return 0;
+}
+
+int makeSecondBinary(int statement_cnt,MachineOrder CODE_IMAGE[],Operand DATA_IMAGE[], int IC,char word[],char srcoper[],char distoper[],char comma[],Tlinkptr *head,int *error_flag){
+    Tlinkptr runner;
+    int order;
+    /*  making sure srcoper and distoper have the needed values if needed*/
+    if(srcoper[strlen(srcoper)-1]==',')
+        srcoper[strlen(srcoper)-1]='\0';
+    if(distoper[0]==',')
+        distoper=distoper+1;
+    if(strcmp(distoper,"\0")==0)
+        distoper=comma;
+    if(distoper[0]==',')
+        distoper=distoper+1;
+
+    /*  getting command from table */
+    order=LookupinDict(word);
+    switch(order){
+        case 13:
+            runner=get_symbol(srcoper,head);
+            if(runner){
+                printf("%s %d %d", (*runner).symbol,(*runner).value,IC);
+                CODE_IMAGE[IC].operator.dist_add=ADD_DIR;               
+                CODE_IMAGE[IC+1].dist_oper.val.unsign=(*runner).value;
+                CODE_IMAGE[IC+1].operator.are=0xA;                      /*No Break here*/
+            }
+        /*case 5: case 6: case 7: case 8: case 9: 
+        case 10: case 11: case 12: 
+            CODE_IMAGE[IC].operator.src_add=NO_ADD;    
+            break;
+        case 1:
+            if(distoper[0]=='#'){
+                CODE_IMAGE[IC].operator.dist_add=ADD_IMM;               /*No Break here*/
+               /* CODE_IMAGE[IC+2].dist_oper.val.sign=atoi(distoper+1);
+                CODE_IMAGE[IC+2].operator.are=0xA;
+            }
+
+        case 0: case 2: case 3: case 4:
+            if(srcoper[0]=='#'){
+                CODE_IMAGE[IC].operator.src_add=ADD_IMM;
+                CODE_IMAGE[IC+1].src_oper.val.sign=atoi(srcoper+1);
+                CODE_IMAGE[IC+1].operator.are=0xA;
+            }
+            break;*/
     }
 	return 0;
 }

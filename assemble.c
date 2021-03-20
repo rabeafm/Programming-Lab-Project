@@ -90,7 +90,7 @@ int readfile(char *file){
 int writefiles(char *file){
 	FILE *fd;
 	char file_ext[MAX_FILENAME_LENGTH];
-	char statement[MAX_STATEMENT_LENGTH];
+	char statement[MAX_STATEMENT_LENGTH]="\0";
 	int statement_cnt=100;
 
 	strcpy(file_ext,"x/");			/*	remove the x directory*/
@@ -100,16 +100,19 @@ int writefiles(char *file){
 		printf("Cannot open the file %s for writing output, check if you have permission or disk space.\n",file_ext);
 		return NOCHANGE;
 	}
-
+	sprintf(statement,"\t%d %d\n",ICF-statement_cnt,DCF);
+	fputs(statement,fd);
 	printf("The file %s opened, writing data:\n",file_ext);
-	while (statement_cnt<ICF+100)
+	while (statement_cnt<ICF+DCF)
 	{
-		sprintf(statement,"%04d %X%X%X %X\n",statement_cnt,CODE_IMAGE[statement_cnt-99].operator.opcode,CODE_IMAGE[statement_cnt-99].operator.funct,
-			CODE_IMAGE[statement_cnt-99].operator.src_add*4+CODE_IMAGE[statement_cnt-99].operator.dist_add,CODE_IMAGE[statement_cnt-99].operator.are);
+		sprintf(statement,"%04d %X%X%X %X\n",statement_cnt,CODE_IMAGE[statement_cnt-100].operator.opcode,CODE_IMAGE[statement_cnt-100].operator.funct,
+			CODE_IMAGE[statement_cnt-100].operator.src_add*4+CODE_IMAGE[statement_cnt-100].operator.dist_add,CODE_IMAGE[statement_cnt-100].operator.are);
 		fputs(statement,fd);
 		statement_cnt++;
 	}	
-	printf("write files\n"); return 1;
+	printf("write files\n"); 
+	fclose(fd);
+	return 1;
 }
 
 void printTable(Tlinkptr r){

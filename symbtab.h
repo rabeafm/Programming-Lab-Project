@@ -28,4 +28,5 @@ typedef struct {
 
 int add_symbol(int,char *,int *,char *, Tlinkptr *, int *);
 void update_data_symbols(int, Tlinkptr *);
+Tlinkptr get_symbol(char *,Tlinkptr *);
 #endif

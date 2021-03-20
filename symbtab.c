@@ -113,7 +113,15 @@ int add_symbol(int statement_cnt,char *label, int *DC, char *word, Tlinkptr *hea
 	return 1;	
 }
 
-
+Tlinkptr get_symbol(char symbol[],Tlinkptr *head){
+	Tlinkptr runner = *head;
+	while((*runner).next){
+		if(strcmp((*runner).symbol,symbol)==0)
+			return runner;
+		runner = (*runner).next;
+	}
+	return NULL;
+}
 
 void update_data_symbols(int ICF,Tlinkptr *head){
 	Tlinkptr runner = *head;
