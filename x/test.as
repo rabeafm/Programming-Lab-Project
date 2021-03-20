@@ -21,9 +21,9 @@ STR:		.string	"abcd"
 ; what is that
 .extern val1
 .extern val1
-LIST:		.data	+6,5,-7,8,1,-9
-LIST:		.data	,6,-9
-LIST:		.data	k6,-9
+LIST:		.data	+6,5,d-7,8,1,-9
+LIST:		.data	,6,d-9
+LIST:		.data	k6k,-9
 LIST:		.data	-6,-9
 STR:		.string	"abcd"   .  
 STR:		.string	"abcd"    

@@ -14,7 +14,10 @@ typedef struct operator {
 } Operator;
 
 typedef struct operand {
-	unsigned int val: 12;
+	union {
+		unsigned int uval: 12;
+		signed int sval: 12;
+	} val;
 	unsigned int are: 4;	/* .data .string .extern*/
 } Operand;
 
