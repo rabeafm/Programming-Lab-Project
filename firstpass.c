@@ -5,32 +5,13 @@
 #include "symbtab.h"
 #include "dict.h"
 
-OperatorDict OpTable[]={
-	/* Order   Dis Src	Funct  OpCode	  Order   Dis Src  Funct  OpCode	 Order   Dis Src  Funct  OpCode */
-	{  "mov" , {0 , 0 , FMOV , MOV }}, {  "cmp" , {0 , 0 , FCMP , CMP }}, {  "add" , {0 , 0 , FADD , ADD }},
-	{  "sub" , {0 , 0 , FSUB , SUB }}, {  "lea" , {0 , 0 , FLEA , LEA }}, {  "clr" , {0 , 0 , FCLR , CLR }},
-	{  "not" , {0 , 0 , FNOT , NOT }}, {  "inc" , {0 , 0 , FINC , INC }}, {  "dec" , {0 , 0 , FDEC , DEC }},
-	{  "jmp" , {0 , 0 , FJMP , JMP }}, {  "bne" , {0 , 0 , FBNE , BNE }}, {  "jsr" , {0 , 0 , FJSR , JSR }},
-	{  "red" , {0 , 0 , FRED , RED }}, {  "prn" , {0 , 0 , FPRN , PRN }}, {  "rts" , {0 , 0 , FRTS , RTS }},
-	{  "stop", {0 , 0 , FSTOP, STOP }}
-};
-/* Declaring Global Variables and Functions to be used */
-int Lookup(word){
-	int i;
-	for(i=0;i<16;i++)
-		return 0;
-	return 1;
-}
-int firstbincode(){
-	return 0;
-}
+
 
 
 /* Implementation of first process Functions */
-int firstpass(char *statement,int statement_cnt,int *IC,int *DC,Tlinkptr *head,Operand DATA_IMAGE[],MachineOrder CODE_IMAGE[]){
-	char label[32]="\0",word[32]="\0",srcoper[32]="\0",distoper[32]="\0";
+int firstpass(char *statement,int statement_cnt,int *IC,int *DC,Tlinkptr *head,Operand DATA_IMAGE[],MachineOrder CODE_IMAGE[],int *error_flag){
+	char label[32]="\0",word[32]="\0",srcoper[32]="\0",distoper[32]="\0",comma[32]="\0",tmi[32]="\0";
 	int label_length = 0;
-	int error_flag = 0;
 	int L=0;
 	
 	/*	Checking for Blank or Comment Lines - Should Ignore Them  */
@@ -41,22 +22,22 @@ int firstpass(char *statement,int statement_cnt,int *IC,int *DC,Tlinkptr *head,O
 
 	/* Check if the first word is a Label if it is mark the label flag and put the data in the right variables */ 
 	if(isLabel(word)){
-		L=sscanf(statement,"%s %s %s %s", label, word, srcoper, distoper)-1; /* Correct Input and update L for possible later use */
+		sscanf(statement,"%s %s %s %s %s %s", label, word, srcoper, distoper,comma,tmi);
 		label_length=strlen(label);			/* Turn On label flag */
 	} else {
-		L=sscanf(statement,"%s %s %s", word, srcoper, distoper);
+		sscanf(statement,"%s %s %s %s %s", word, srcoper, distoper,comma,tmi);
 	}
 	
 	/* Check if it is a data or string storage instruction and call add to data image */ 
 	if(isData(word)) {
 		if(label_length)
-			add_symbol(statement_cnt,label,DC,word,head,&error_flag);
-		return add_data_to_image(statement_cnt,strstr(statement,".data")+5,DATA_IMAGE,DC,&error_flag);
+			add_symbol(statement_cnt,label,DC,word,head,error_flag);
+		return add_data_to_image(statement_cnt,strstr(statement,".data")+5,DATA_IMAGE,DC,error_flag);
 	}
 	if(isString(word)){
 		if(label_length)
-			add_symbol(statement_cnt,label,DC,word,head,&error_flag);
-		return add_string_to_image(statement_cnt,strstr(statement,".string")+7,DATA_IMAGE,DC,&error_flag);
+			add_symbol(statement_cnt,label,DC,word,head,error_flag);
+		return add_string_to_image(statement_cnt,strstr(statement,".string")+7,DATA_IMAGE,DC,error_flag);
 	}
 
 	/* Ignore Enrty*/
@@ -74,30 +55,37 @@ int firstpass(char *statement,int statement_cnt,int *IC,int *DC,Tlinkptr *head,O
 		} else { 
 			sscanf(statement,"%s %s",word,label); 
 		}
-		add_symbol(statement_cnt,label,DC,word,head,&error_flag);
+		add_symbol(statement_cnt,label,DC,word,head,error_flag);
 		return 0;
 	}
 
 	/*		Then it is an order statement		*/
 	if(label_length){
-		add_symbol(statement_cnt,label,IC,"code",head,&error_flag);
+		add_symbol(statement_cnt,label,IC,"code",head,error_flag);
 	}
-	/*if(!Lookup(word)){
-		printf("Operator %s doesnt exist check spelling\n",word);
-		error_flag = 3;
-		return 0;
-	}*/
-/* lookup operator in operator list if doesnt exist report error
-		Analayze operand structure and check and calculate number of words needed ->L */
 
-	firstbincode(*IC,L,word,srcoper,distoper);/* bincode first word and every infoword in meyade immediate addressing*/
-											   /*add to machine code with IC and L*/
+
+	printf("%s --- %s --- %s --- %s --- %s --- %s \n",label,word,srcoper,distoper,comma ,tmi);
+	/*	too many operands warning */
+	if(strcmp(tmi,"\0")!=0){
+		printf("*** Error in line: %d, too many operands (Maximum number of operands is two) ***\n",statement_cnt);
+		*error_flag = 3;
+		return NOCHANGE;
+	}
+
+	/* lookup operator in operator list if doesnt exist report error*/
+	if(LookupinDict(word)==-1){
+		printf("*** Error in line: %d, illegal command %s check the spelling (commands must be lowercase)  ***\n",statement_cnt,word);
+		*error_flag = 3;
+		return NOCHANGE;
+	}
+	/* Analayze operand structure and check and calculate number of words needed ->L */
+	L=analayzeStatement(statement_cnt,word,srcoper,distoper,comma,error_flag);
+
+	if(*error_flag!=3) 
+		makeFirstBinary(CODE_IMAGE, statement_cnt,*IC,L,word,srcoper,distoper,comma,error_flag);
 	(*IC)+=L;	/*update IC=IC+L*/
-
-	printf("\t\t\t\t\t %d \t %s \t %s \t %s \n",L,word,srcoper,distoper);
-	if (error_flag==3)
-		return 3;
-	return 0;
+	return CHANGED;
 }
 
 int isBlank(char *word){

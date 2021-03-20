@@ -1,4 +1,3 @@
-
 #ifndef _DICT_
 #define _DICT_
 
@@ -15,15 +14,15 @@ typedef struct operator {
 
 typedef struct operand {
 	union {
-		unsigned int uval: 12;
-		signed int sval: 12;
+		unsigned int unsign: 12;
+		signed int sign: 12;
 	} val;
 	unsigned int are: 4;	/* .data .string .extern*/
 } Operand;
 
-typedef struct machineorder {
+typedef union machineorder {
 	Operator operator;
-	Operand  src_data_oper;	/* The content can be code or data - union word {	data_word *data;	code_word *code; } word; data or code flag*/
+	Operand  src_oper;	/* The content can be code or data - union word {	data_word *data;	code_word *code; } word; data or code flag*/
 	Operand  dist_oper;
 } MachineOrder;
 
@@ -54,22 +53,16 @@ typedef enum {
 } FunctsDict;
 
 typedef enum {
-	AIMM = 0,	/* 	Immediate 	*/
-	ADIR = 1,	/* 	Direct 		*/
-	AREL = 2,	/*	Relative 	*/
-	AREG = 3	/* 	Register 	*/
+	ADD_IMM = 0,	/* 	Immediate 	*/
+	ADD_DIR = 1,	/* 	Direct 		*/
+	ADD_REL = 2,	/*	Relative 	*/
+	ADD_REG = 3		/* 	Register 	*/
 } AddrModes;
 
 typedef enum {
 	R0 = 1,  R1 = 2,  R2 = 4,  R3 = 8,
 	R4 = 16, R5 = 32, R6 = 64, R7 = 128
 } RegDict;
-
-/*----------------------------------------------*
- *							*
- *----------------------------------------------*/
-
-
 
 #endif
 

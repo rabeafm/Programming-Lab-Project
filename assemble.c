@@ -44,6 +44,7 @@ int readfile(char *file){
 	char file_ext[MAX_FILENAME_LENGTH];
 	char statement[MAX_STATEMENT_LENGTH];
 	int statement_cnt=0;
+	int error_flag=0;
 
 	int IC=100,DC=0;
 
@@ -58,11 +59,12 @@ int readfile(char *file){
 	printf("The file %s was found, intiating first pass:\n",file_ext);
 	while(fgets(statement,MAX_STATEMENT_LENGTH,fd)){
 		statement_cnt++;
-		if(firstpass(statement,statement_cnt,&IC,&DC,&(SYMB_TABLE.head),DATA_IMAGE,CODE_IMAGE)==3){
-			printf("Errors were found in first pass of file %s, terminating proccess for this file.",file_ext);
-			fclose(fd);
-			return NOCHANGE;
-		}	
+		firstpass(statement,statement_cnt,&IC,&DC,&(SYMB_TABLE.head),DATA_IMAGE,CODE_IMAGE,&error_flag);	
+	}
+	if(error_flag==3){
+		printf("Errors were found in first pass of file %s, terminating proccess for this file.",file_ext);
+		fclose(fd);
+		return NOCHANGE;
 	}
 	ICF=IC;
 	DCF=DC;
@@ -71,26 +73,45 @@ int readfile(char *file){
 
 	rewind(fd);
 	printf("First pass of %s finished successuly, intiating second pass:\n",file_ext);
-	/******************************************************************
-	printf("%04d %X%X%X %X\n",100,CODE_IMAGE[0].operator.opcode,CODE_IMAGE[0].operator.funct,CODE_IMAGE[0].operator.src_add*4+CODE_IMAGE[0].operator.dist_add,CODE_IMAGE[0].operator.are);
-	printf("%04d %03X %X\n",101,CODE_IMAGE[0].src_data_oper.val,CODE_IMAGE[0].src_data_oper.are);
-	printf("%04d %03X %d\n",102,CODE_IMAGE[0].dist_oper.val,CODE_IMAGE[0].dist_oper.are);
-	******************************************************************/
-
+	
 
 	while(fgets(statement,MAX_STATEMENT_LENGTH,fd)){
-		secondpass(statement,&IC,&DC);
+		statement_cnt++;
+		secondpass(statement,statement_cnt,&IC,&DC,&(SYMB_TABLE.head),DATA_IMAGE,CODE_IMAGE,&error_flag);	
 	}
-	/*if(errors){
-		printf("The following Errors were found in %s:\n",fileext);
-		printf("Terminating Proccess for this file.");
-		return 0;
-	}*/
 	fclose(fd);
-	return 1;
+	if(error_flag==3){
+		printf("Errors were found in second pass of file %s, terminating proccess for this file.",file_ext);
+		return NOCHANGE;
+	}
+	return CHANGED;
 }
 
-int writefiles(char *file){printf("write files\n"); return 1;}
+int writefiles(char *file){
+	FILE *fd;
+	char file_ext[MAX_FILENAME_LENGTH];
+	char statement[MAX_STATEMENT_LENGTH];
+	int statement_cnt=100;
+
+	strcpy(file_ext,"x/");			/*	remove the x directory*/
+	strcat(file_ext,file);
+	strcat(file_ext,".ob");
+	if(!(fd=fopen(file_ext,"w+"))){ /* writable problem accessing file*/
+		printf("Cannot open the file %s for writing output, check if you have permission or disk space.\n",file_ext);
+		return NOCHANGE;
+	}
+
+	printf("The file %s opened, writing data:\n",file_ext);
+	while (statement_cnt<ICF+100)
+	{
+		sprintf(statement,"%04d %X%X%X %X\n",statement_cnt,CODE_IMAGE[statement_cnt-99].operator.opcode,CODE_IMAGE[statement_cnt-99].operator.funct,
+			CODE_IMAGE[statement_cnt-99].operator.src_add*4+CODE_IMAGE[statement_cnt-99].operator.dist_add,CODE_IMAGE[statement_cnt-99].operator.are);
+		fputs(statement,fd);
+		statement_cnt++;
+	}	
+	printf("write files\n"); return 1;
+}
+
 void printTable(Tlinkptr r){
 	if(r){
 		printf("Symbol: %s Value: %d Code: %d Data: %d entry: %d extern: %d Next: %s \n",(*r).symbol,(*r).value,(*r).is_code,(*r).is_data,(*r).is_entry,(*r).is_extern,(*((*r).next)).symbol);
