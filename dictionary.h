@@ -1,34 +1,49 @@
+#ifndef _DICT_
+#define _DICT_
 
 /*--------------------------------------------------------------*
  *			   Operator / Operand / Machine Order		   		*
+ * Operator, Operand and Machine Order are the main structures  *
+ * that hold the code image and the data image.					*
+ * Used Mainly in: assemble.c, files.c & passes.c				*
  *--------------------------------------------------------------*/
+
 typedef struct operator {
 	unsigned int dist_add: 2;
 	unsigned int src_add: 2;
 	unsigned int funct: 4;
 	unsigned int opcode: 4;
-	char are;
 } Operator;
 
 typedef struct operand {
-	signed int val: 12;
-	char are;	/* .data .string .extern*/
+	union {
+		unsigned int unsign: 12;
+		signed int sign: 12;
+	} val;
 } Operand;
 
 typedef struct machineorder {
-	Operator operator;
-	Operand  src_oper;	/* The content can be code or data - union word {	data_word *data;	code_word *code; } word; data or code flag*/
-	Operand  trg_oper;	
+	union {
+		Operator operator;
+		Operand  src_oper;
+		Operand  dist_oper;
+	} optype;
+	unsigned int are: 4;
+	unsigned int flag: 2;
 } MachineOrder;
-
-typedef struct operatordict {
-	char key[5];
-	Operator op;
-} OperatorDict;
 
 /*----------------------------------------------------------------*
  * Orders Opcodes / Functs / Address Modes / Registers Dictionary *
+ * Operator Dictionary is used to hold in the data related to its *
+ * translation to binary code.									  *
+ * Used Mainly in: binary.c										  *
  *----------------------------------------------------------------*/
+typedef struct operatordict {
+	char key[5];
+	unsigned int funct: 4;
+	unsigned int opcode: 4;
+} OperatorDict;
+
 typedef enum {
 	/*	First Group	- Two Operands - Z-Flag in PSW	 */
 	MOV = 0,  CMP = 1, ADD = 2, SUB = 2,  LEA = 4,
@@ -48,10 +63,11 @@ typedef enum {
 } FunctsDict;
 
 typedef enum {
-	AIMM = 0,	/* 	Immediate 	*/
-	ADIR = 1,	/* 	Direct 		*/
-	AREL = 2,	/*	Relative 	*/
-	AREG = 3	/* 	Register 	*/
+	NO_ADD =0,
+	ADD_IMM = 0,	/* 	Immediate 	*/
+	ADD_DIR = 1,	/* 	Direct 		*/
+	ADD_REL = 2,	/*	Relative 	*/
+	ADD_REG = 3		/* 	Register 	*/
 } AddrModes;
 
 typedef enum {
@@ -59,12 +75,7 @@ typedef enum {
 	R4 = 16, R5 = 32, R6 = 64, R7 = 128
 } RegDict;
 
-/*----------------------------------------------*
- *							*
- *----------------------------------------------*/
-
-
-
+#endif
 
 
 

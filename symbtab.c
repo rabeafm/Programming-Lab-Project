@@ -6,6 +6,7 @@
 
 #define MAX_RESERVED_WORDS 30
 #define MAX_LENGTH_OF_RESERVED_WORDS 7
+#define MAX_EXTERNS 30
 
 char RES_WORDS[MAX_RESERVED_WORDS][MAX_LENGTH_OF_RESERVED_WORDS] = {
 	"mov", "cmp", "add", "sub",
@@ -16,6 +17,9 @@ char RES_WORDS[MAX_RESERVED_WORDS][MAX_LENGTH_OF_RESERVED_WORDS] = {
 	"r4", "r5", "r6", "r7",
 	".data",".string",".entry",".extern"
 };
+
+char EXTERNS[MAX_EXTERNS][2][31];
+
 
 /* if symbol is not legal label report error */
 int isLabelLegal(int statement_cnt, char *label){
@@ -113,13 +117,51 @@ int add_symbol(int statement_cnt,char *label, int *DC, char *word, Tlinkptr *hea
 	return 1;	
 }
 
+int addExtern(srcoper,statement_cnt){
+	/*int i=0;
+	while(EXTERNS[i++][0]);
+	EXTERNS[i][0]=srcoper;
+	EXTERNS[i][1]=statement_cnt;
+	EXTERNS[i+1][0]=NULL;*/
+	return 1;
+}
 
 
-void update_data_symbols(int ICF,Tlinkptr *head){
+Tlinkptr get_symbol(char symbol[],Tlinkptr *head){
 	Tlinkptr runner = *head;
-	while((*runner).next){
+	while(runner){
+		if(strcmp((*runner).symbol,symbol)==0)
+			return runner;
+		runner = (*runner).next;
+	}
+	return NULL;
+
+}
+
+
+/*	Updating final counters and Symbol Table links using +ICF */
+void updateDataSymbols(int ICF,Tlinkptr *head){
+	Tlinkptr runner = *head;
+	while(runner){
 		if((*runner).is_data==1)
 			(*runner).value+=ICF;
 		runner = (*runner).next;
 	}
 }
+
+void printTable(Tlinkptr r){
+	if(r){
+		printf("Symbol: %s Value: %d Code: %d Data: %d entry: %d extern: %d Next: %s \n",(*r).symbol,(*r).value,(*r).is_code,(*r).is_data,(*r).is_entry,(*r).is_extern,(*((*r).next)).symbol);
+		printTable(r->next);
+	}
+}
+
+void freeTable(Tlinkptr runner){
+	Tlinkptr tmp;
+	while (runner){
+       tmp = runner;
+       runner = runner->next;
+       free(tmp);
+    }
+}
+

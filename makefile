@@ -1,11 +1,14 @@
-assembler: assemble.o firstpass.o secondpass.o symbtab.o
-	gcc -g -ansi -Wall -pedantic o/assemble.o o/firstpass.o o/secondpass.o o/symbtab.o -o assembler
-assemble.o: assemble.c 
+assembler: assemble.o binary.o files.o passes.o symbtab.o utils.o
+	gcc -g -ansi -Wall -pedantic o/assemble.o o/binary.o o/files.o o/passes.o o/symbtab.o o/utils.o -o assembler
+assemble.o: assemble.c
 	gcc -c -ansi -Wall -pedantic assemble.c -o o/assemble.o
-firstpass.o: firstpass.c passes.h
-	gcc -c -ansi -Wall -pedantic firstpass.c -o o/firstpass.o
-secondpass.o: secondpass.c passes.h
-	gcc -c -ansi -Wall -pedantic secondpass.c -o o/secondpass.o
+binary.o: binary.c
+	gcc -c -ansi -Wall -pedantic binary.c -o o/binary.o
+files.o: files.c files.h
+	gcc -c -ansi -Wall -pedantic files.c -o o/files.o
+passes.o: passes.c
+	gcc -c -ansi -Wall -pedantic passes.c -o o/passes.o
 symbtab.o: symbtab.c symbtab.h
 	gcc -c -ansi -Wall -pedantic symbtab.c -o o/symbtab.o
-
+utils.o: utils.c utils.h
+	gcc -c -ansi -Wall -pedantic utils.c -o o/utils.o
