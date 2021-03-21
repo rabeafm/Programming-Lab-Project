@@ -1,25 +1,25 @@
 #include <stdio.h>
-#include <stdlib.h>
 #include <ctype.h>
-#include <string.h>
-#include "passes.h"
+#include "dictionary.h"
+#include "utils.h"
 #include "symbtab.h"
-#include "dict.h"
 
-#define MAX_DIGITS 5
-
-#define NUMBER_OF_ORDERS 16
+/* Operations with coded values of opcode and funct for easier use */
 OperatorDict OpTable[]={
-	/* Order   Dis Src	Funct  OpCode	  Order   Dis Src  Funct  OpCode	 Order   Dis Src  Funct  OpCode */
-	{  "mov" , /*{31 , 310 ,*/ FMOV , MOV }, {  "cmp" , /*{310 , 310 ,*/ FCMP , CMP }, {  "add" , /*{31 , 310 ,*/ FADD , ADD },
-	{  "sub" , /*{31 , 310 ,*/ FSUB , SUB }, {  "lea" , /*{31 , 1 , */FLEA , LEA }, {  "clr" , /*{31 , 0 ,*/ FCLR , CLR },
-	{  "not" , /*{31 , 0 ,*/ FNOT , NOT }, {  "inc" , /*{31 , 0 , */FINC , INC }, {  "dec" , /*{31 , 0 , */FDEC , DEC },
-	{  "jmp" , /*{21 , 0 ,*/ FJMP , JMP }, {  "bne" , /*{21 , 0 , */FBNE , BNE }, {  "jsr" , /*{21 , 0 ,*/ FJSR , JSR },
-	{  "red" , /*{31 , 0 ,*/ FRED , RED }, {  "prn" , /*{310 , 0 , */FPRN , PRN }, {  "rts" , /*{0 , 0 ,*/ FRTS , RTS },
-	{  "stop", /*{0 , 0 ,*/ FSTOP, STOP }
+	/*Order  Funct OpCode	Order  Funct OpCode	  Order  Funct OpCode   Order  Funct OpCode */
+	{ "mov", FMOV, MOV }, { "cmp", FCMP, CMP }, { "add", FADD, ADD }, { "sub", FSUB, SUB },
+    { "lea", FLEA, LEA }, { "clr", FCLR, CLR },	{ "not", FNOT, NOT }, { "inc", FINC, INC },
+    { "dec", FDEC, DEC }, { "jmp", FJMP, JMP }, { "bne", FBNE, BNE }, { "jsr", FJSR, JSR },
+	{ "red", FRED, RED }, { "prn", FPRN, PRN }, { "rts", FRTS, RTS }, { "stop", FSTOP, STOP}
 };
-/* Declaring Global Variables and Functions to be used */
-int LookupinDict(char word[]){
+
+/** ------------------------------------------------------------*
+ *  Recieves a word, checks if it exists in assembly language   *
+ *  dictionary, and returns its number in the OpTable     		*
+ *  @param word 		word									*
+ *  @return Index in OpTable Dictionary or else -1				*
+ *--------------------------------------------------------------*/
+int lookupDict(char word[]){
 	int i;
 	for(i=0;i<NUMBER_OF_ORDERS;i++)
 		if(strcmp(OpTable[i].key,word)==0)
@@ -27,25 +27,12 @@ int LookupinDict(char word[]){
 	return -1;
 }
 
-int isOperandLegal(int statement_cnt, char *operand,int length){
-    int i=0;
-    if(!isalnum(operand[i]) && operand[i]!='#' && operand[i]!='%' && operand[i]!='-' && operand[i]!='+'){
-        printf("*** Error in line: %d, illegal first character in operand ***\n",statement_cnt);
-                return FALSE;
-    }
-    for(i=1;i<length;i++){
-        if(!isalnum(operand[i]) && operand[i]!='-' && operand[i]!='+'){
-            printf("*** Error in line: %d, illegal character -%c- was used in operand name ***\n",statement_cnt,operand[i]);
-            return FALSE;
-        }
-    }
-    return TRUE;
-}
+
 
 int analayzeStatement(int statement_cnt,char *word,char *srcoper,char *distoper,char *comma,int *error_flag){
     int commacnt=0;
     char *fix;
-    switch(LookupinDict(word)){
+    switch(lookupDict(word)){
         case 14: case 15:
             if(strcmp(srcoper,"\0")!=0 || strcmp(distoper,"\0")!=0 || strcmp(comma,"\0")!=0 ){
                 printf("*** Error in line: %d, order %s doesn't recieve operands ***\n",statement_cnt,word);
@@ -124,127 +111,188 @@ int analayzeStatement(int statement_cnt,char *word,char *srcoper,char *distoper,
 }
 
 /* bincode first word and every infoword in meyade immediate addressing*/
-int makeFirstBinary(MachineOrder CODE_IMAGE[], int statement_cnt,int IC,int L,char word[],char srcoper[],char distoper[],char comma[],int *error_flag){
-    int order;
+int makeFirstBinary(MachineOrder CODE_IMAGE[], int statement_cnt,int IC,int L,char word[],char oper[],char distoper[],char comma[],int *error_flag){
+    int order,num,R,cflag=0;
     IC-=100;
     /*  making sure srcoper and distoper have the needed values if needed*/
-    if(srcoper[strlen(srcoper)-1]==',')
-        srcoper[strlen(srcoper)-1]='\0';
+    if(oper[strlen(oper)-1]==',')
+        oper[strlen(oper)-1]='\0';
     if(distoper[0]==',')
         distoper=distoper+1;
     if(strcmp(distoper,"\0")==0)
         distoper=comma;
     if(distoper[0]==',')
         distoper=distoper+1;
+    if(strcmp(distoper,"\0")==0)
+        distoper=oper;
 
     /*  getting command from table */
-    order=LookupinDict(word);
+    order=lookupDict(word);
     /* works for all */
-    CODE_IMAGE[IC].operator.are=0xA;
-    CODE_IMAGE[IC].operator.opcode=OpTable[order].opcode;
-    CODE_IMAGE[IC].operator.funct=OpTable[order].funct;
+    CODE_IMAGE[IC].flag=1;
+    CODE_IMAGE[IC].are=0xA;
+    CODE_IMAGE[IC].optype.operator.opcode=OpTable[order].opcode;
+    CODE_IMAGE[IC].optype.operator.funct=OpTable[order].funct;
+    CODE_IMAGE[IC].optype.operator.dist_add=NO_ADD;
+    CODE_IMAGE[IC].optype.operator.src_add=NO_ADD;    
     switch(order){
-        case 14: case 15:
-            CODE_IMAGE[IC].operator.dist_add=NO_ADD;                    /*No Break here*/
+        case 4:
+            if(oper[0]=='#'){
+                printf("*** Error in line: %d, Operator -%s- cannot use immediate addresseing as first operand ***\n",statement_cnt,OpTable[order].key);
+                *error_flag=3;
+                break;
+            }
+            if(strlen(oper)==2 && oper[0]=='r' && isdigit(oper[1]) && oper[1]>='0' && oper[1]<='7'){
+                printf("*** Error in line: %d, Operator -%s- cannot use register direct addresseing as first operand ***\n",statement_cnt,OpTable[order].key);
+                *error_flag=3;
+                break;
+            }
+        case 0: case 1: case 2: case 3:
+            if(oper[0]=='%'){
+                printf("*** Error in line: %d, Operator -%s- cannot use relative addresseing as first operand ***\n",statement_cnt,OpTable[order].key);
+                *error_flag=3;
+                break;
+            }
+            if(oper[0]=='#'){
+                CODE_IMAGE[IC].optype.operator.src_add=ADD_IMM;
+                CODE_IMAGE[IC+1].flag=2;
+                CODE_IMAGE[IC+1].optype.src_oper.val.sign=atoi(oper+1);
+                CODE_IMAGE[IC+1].are=0xA;
+            }
+            if(strlen(oper)==2 && oper[0]=='r' && isdigit(oper[1]) && oper[1]>='0' && oper[1]<='7'){
+                CODE_IMAGE[IC].optype.operator.src_add=ADD_REG;
+                CODE_IMAGE[IC+1].flag=2;
+                num=atoi(oper+1);
+                switch (num) { 
+                    case 0: R=R0; break;    case 1: R=R1; break;
+                    case 2: R=R2; break;    case 3: R=R3; break;
+                    case 4: R=R4; break;    case 5: R=R5; break;
+                    case 6: R=R6; break;    case 7: R=R7; break;
+                    default:      break;
+                }          
+                CODE_IMAGE[IC+1].optype.src_oper.val.sign=R;
+                CODE_IMAGE[IC+1].are=0xA;
+            }
+            cflag=1;
+        case 5: case 6: case 7: case 8: case 12:
+            if(distoper[0]=='#' && order!=1){
+                printf("*** Error in line: %d, Operator -%s- cannot use immediate addresseing as second operand ***\n",statement_cnt,OpTable[order].key);
+                *error_flag=3;
+                break;
+            }
         case 13:
-            if(srcoper[0]=='#'){
-                CODE_IMAGE[IC].operator.dist_add=ADD_IMM;               
-                CODE_IMAGE[IC+1].dist_oper.val.sign=atoi(srcoper+1);
-                CODE_IMAGE[IC+1].operator.are=0xA;                      /*No Break here*/
+            if(distoper[0]=='%'){
+                printf("*** Error in line: %d, Operator -%s- cannot use relative addresseing as second operand ***\n",statement_cnt,OpTable[order].key);
+                *error_flag=3;
+                break;
             }
-        case 5: case 6: case 7: case 8: case 9: 
-        case 10: case 11: case 12: 
-            CODE_IMAGE[IC].operator.src_add=NO_ADD;    
-            break;
-        case 1:
+            if(strlen(distoper)==2 && distoper[0]=='r' && isdigit(distoper[1]) && distoper[1]>='0' && distoper[1]<='7'){
+                CODE_IMAGE[IC].optype.operator.dist_add=ADD_REG;
+                CODE_IMAGE[IC+cflag+1].flag=3;
+                num=atoi(distoper+1);
+                switch (num) { 
+                    case 0: R=R0; break;    case 1: R=R1; break;
+                    case 2: R=R2; break;    case 3: R=R3; break;
+                    case 4: R=R4; break;    case 5: R=R5; break;
+                    case 6: R=R6; break;    case 7: R=R7; break;
+                    default:      break;
+                }          
+                CODE_IMAGE[IC+cflag+1].optype.dist_oper.val.sign=R;
+                CODE_IMAGE[IC+cflag+1].are=0xA;
+            }
             if(distoper[0]=='#'){
-                CODE_IMAGE[IC].operator.dist_add=ADD_IMM;               /*No Break here*/
-                CODE_IMAGE[IC+2].dist_oper.val.sign=atoi(distoper+1);
-                CODE_IMAGE[IC+2].operator.are=0xA;
-            }
-
-        case 0: case 2: case 3: case 4:
-            if(srcoper[0]=='#'){
-                CODE_IMAGE[IC].operator.src_add=ADD_IMM;
-                CODE_IMAGE[IC+1].src_oper.val.sign=atoi(srcoper+1);
-                CODE_IMAGE[IC+1].operator.are=0xA;
+                CODE_IMAGE[IC].optype.operator.dist_add=ADD_IMM; 
+                CODE_IMAGE[IC+cflag+1].flag=3;
+                CODE_IMAGE[IC+cflag+1].optype.dist_oper.val.sign=atoi(distoper+1);
+                CODE_IMAGE[IC+cflag+1].are=0xA;                      /*No Break here*/
             }
             break;
     }
 	return 0;
 }
 
-int makeSecondBinary(int statement_cnt,MachineOrder CODE_IMAGE[],Operand DATA_IMAGE[], int IC,char word[],char srcoper[],char distoper[],char comma[],Tlinkptr *head,int *error_flag){
-    Tlinkptr runner;
-    int order;
+int makeSecondBinary(int statement_cnt,MachineOrder CODE_IMAGE[],Operand DATA_IMAGE[], int *IC,char word[],char oper[],char distoper[],char comma[],Tlinkptr *head,int *error_flag){
+    int order,cflag=0;
+    Tlinkptr runner=NULL;
+    
     /*  making sure srcoper and distoper have the needed values if needed*/
-    if(srcoper[strlen(srcoper)-1]==',')
-        srcoper[strlen(srcoper)-1]='\0';
+    if(oper[strlen(oper)-1]==',')
+        oper[strlen(oper)-1]='\0';
     if(distoper[0]==',')
         distoper=distoper+1;
     if(strcmp(distoper,"\0")==0)
         distoper=comma;
     if(distoper[0]==',')
         distoper=distoper+1;
-
-    /*  getting command from table */
-    order=LookupinDict(word);
+    if(strcmp(distoper,"\0")==0)
+        distoper=oper;
+    
+    /*printf("%d \n",*IC);
+      getting command from table */
+    order=lookupDict(word);
     switch(order){
-        case 13:
-            runner=get_symbol(srcoper,head);
-            if(runner){
-                printf("%s %d %d", (*runner).symbol,(*runner).value,IC);
-                CODE_IMAGE[IC].operator.dist_add=ADD_DIR;               
-                CODE_IMAGE[IC+1].dist_oper.val.unsign=(*runner).value;
-                CODE_IMAGE[IC+1].operator.are=0xA;                      /*No Break here*/
+        case 0: case 1: case 2: case 3: case 4:
+            if(!((strlen(oper)==2 && oper[0]=='r' && isdigit(oper[1]) && oper[1]>='0' && oper[1]<='7') || oper[0]=='#' || oper[0]=='%')){
+                runner = get_symbol(oper,head);                
+                if(runner){
+                    CODE_IMAGE[(*IC)].optype.operator.src_add=ADD_DIR;
+                    CODE_IMAGE[(*IC)+1].flag=2;          
+                    CODE_IMAGE[(*IC)+1].optype.src_oper.val.sign=(*runner).value;
+                    if ((*runner).is_extern)
+                        CODE_IMAGE[(*IC)+1].are=0xE;
+                    else
+                        CODE_IMAGE[(*IC)+1].are=0xC;
+                } else {
+                    printf("*** Error in line: %d, Symbol %s given as first operand wasnt found in symbol table ***\n",statement_cnt,oper);
+                    *error_flag=3;
+                }
             }
-        /*case 5: case 6: case 7: case 8: case 9: 
-        case 10: case 11: case 12: 
-            CODE_IMAGE[IC].operator.src_add=NO_ADD;    
-            break;
-        case 1:
-            if(distoper[0]=='#'){
-                CODE_IMAGE[IC].operator.dist_add=ADD_IMM;               /*No Break here*/
-               /* CODE_IMAGE[IC+2].dist_oper.val.sign=atoi(distoper+1);
-                CODE_IMAGE[IC+2].operator.are=0xA;
+            cflag++;
+        case 5: case 6: case 7: case 8: case 9:
+        case 10: case 11: case 12: case 13:
+            if(!((strlen(distoper)==2 && distoper[0]=='r' && isdigit(distoper[1]) && distoper[1]>='0' && distoper[1]<='7') || distoper[0]=='#' || distoper[0]=='%')){
+                runner = get_symbol(distoper,head);                
+                if(runner){
+                    CODE_IMAGE[(*IC)].optype.operator.dist_add=ADD_DIR;
+                    CODE_IMAGE[(*IC)+cflag+1].flag=3;          
+                    CODE_IMAGE[(*IC)+cflag+1].optype.dist_oper.val.unsign=(*runner).value;
+                    if ((*runner).is_extern)
+                        CODE_IMAGE[(*IC)+cflag+1].are=0xE;
+                    else
+                        CODE_IMAGE[(*IC)+cflag+1].are=0xC;
+                } else {
+                    printf("*** Error in line: %d, Symbol %s given as second operand wasnt found in symbol table ***\n",statement_cnt,oper);
+                    *error_flag=3;
+                }
             }
-
-        case 0: case 2: case 3: case 4:
-            if(srcoper[0]=='#'){
-                CODE_IMAGE[IC].operator.src_add=ADD_IMM;
-                CODE_IMAGE[IC+1].src_oper.val.sign=atoi(srcoper+1);
-                CODE_IMAGE[IC+1].operator.are=0xA;
+            if((distoper[0]=='%') && (order==9 || order==10 || order==11)){
+                runner = get_symbol(distoper+1,head);                
+                if(runner){
+                    CODE_IMAGE[(*IC)].optype.operator.dist_add=ADD_REL;
+                    CODE_IMAGE[(*IC)+1].flag=3;          
+                    CODE_IMAGE[(*IC)+1].optype.dist_oper.val.sign=(*runner).value-((*IC)+101);
+                    CODE_IMAGE[(*IC)+1].are=0xA;
+                } else {
+                    printf("*** Error in line: %d, Symbol %s given as operand wasnt found in symbol table ***\n",statement_cnt,oper);
+                    *error_flag=3;
+                }
             }
-            break;*/
+            cflag++;
     }
-	return 0;
+    *IC=*IC+1+cflag;
+    return 0;
 }
-
 
 /* add data to data image and DC+(length of data) */
-
-int isDataLegal(int statement_cnt, char *nums,int length){
-    int i=0;
-    if(!isdigit(nums[i]) && nums[i]!='-' && nums[i]!='+'){
-        printf("*** Error in line: %d, data must begin with a digit or +/- character followed by a digit ***\n",statement_cnt);
-        return FALSE;
-    }
-    if((nums[i]=='-' || nums[i]=='+') && !isdigit(nums[i+1])){
-        printf("*** Error in line: %d, data must begin with a digit or +/- character followed by a digit ***\n",statement_cnt);
-        return FALSE;
-    }
-    if(!isdigit(nums[length])){
-        printf("*** Error in line: %d, data must end with a digit ***\n",statement_cnt);
-        return FALSE;
-    }
-    for(i=0;i<=length;i++){
-        if(!isdigit(nums[i]) && nums[i]!='-' && nums[i]!='+' && nums[i]!=',' && nums[i]!=' ' && nums[i]!='\t'){
-            printf("*** Error in line: %d, illegal character -%c- was used, you can only use digits,commas,spaces,\\t and +/- ***\n",statement_cnt,nums[i]);
-            return FALSE;
-        }
-    }
-    return TRUE;
+int addBinaryData(MachineOrder CODE_IMAGE[], int IC,Operand DATA_IMAGE[],int DC){
+    CODE_IMAGE[IC].are=0xA;
+    CODE_IMAGE[IC].flag=2;
+    CODE_IMAGE[IC].optype.src_oper.val.sign=DATA_IMAGE[DC].val.sign;  
+    return CHANGED;
 }
+
+
+
 
 int add_data_to_image(int statement_cnt,char *operands,Operand DATA_IMAGE[],int *DC,int *error_flag){
    	int i,j;
@@ -303,35 +351,7 @@ int add_data_to_image(int statement_cnt,char *operands,Operand DATA_IMAGE[],int 
     return NOCHANGE;
 }
 
-int isStringLegal(int statement_cnt, char *operands){
-	int op_length;
-    char *pi;
-    char *last_char;
 
-    op_length=strlen(operands);
-    pi=operands+strspn(operands," \t");
-    if(*pi!='\"'){
-   		printf("*** Error in line: %d, strings must begin with \" character ***\n",statement_cnt);
-        return FALSE;
-    }
-
-    last_char=strrchr(operands,'\"');
-    if(last_char==pi){
-        printf("*** Error in line: %d, strings must end with \" character ***\n",statement_cnt);
-        return FALSE;
-    }
-
-    last_char++;
-    op_length=strlen(operands);
-    while(last_char<&(operands[op_length])){
-        if((*last_char) != ' ' && (*last_char) != '\t' && (*last_char) != '\n'){
-            printf("*** Error in line: %d, writing after string end is illegal ***\n",statement_cnt);
-            return FALSE;
-        }
-        last_char++;
-    }
-    return TRUE;
-}
 
 /* add string to data image and DC+(length of string) */
 int add_string_to_image(int statement_cnt,char *operands,Operand DATA_IMAGE[],int *DC, int *error_flag){

@@ -3,13 +3,16 @@
 
 /*--------------------------------------------------------------*
  *			   Operator / Operand / Machine Order		   		*
+ * Operator, Operand and Machine Order are the main structures  *
+ * that hold the code image and the data image.					*
+ * Used Mainly in: assemble.c, files.c & passes.c				*
  *--------------------------------------------------------------*/
+
 typedef struct operator {
 	unsigned int dist_add: 2;
 	unsigned int src_add: 2;
 	unsigned int funct: 4;
 	unsigned int opcode: 4;
-	unsigned int are :4;
 } Operator;
 
 typedef struct operand {
@@ -17,24 +20,30 @@ typedef struct operand {
 		unsigned int unsign: 12;
 		signed int sign: 12;
 	} val;
-	unsigned int are: 4;	/* .data .string .extern*/
 } Operand;
 
-typedef union machineorder {
-	Operator operator;
-	Operand  src_oper;	/* The content can be code or data - union word {	data_word *data;	code_word *code; } word; data or code flag*/
-	Operand  dist_oper;
+typedef struct machineorder {
+	union {
+		Operator operator;
+		Operand  src_oper;
+		Operand  dist_oper;
+	} optype;
+	unsigned int are: 4;
+	unsigned int flag: 2;
 } MachineOrder;
 
+/*----------------------------------------------------------------*
+ * Orders Opcodes / Functs / Address Modes / Registers Dictionary *
+ * Operator Dictionary is used to hold in the data related to its *
+ * translation to binary code.									  *
+ * Used Mainly in: binary.c										  *
+ *----------------------------------------------------------------*/
 typedef struct operatordict {
 	char key[5];
 	unsigned int funct: 4;
 	unsigned int opcode: 4;
 } OperatorDict;
 
-/*----------------------------------------------------------------*
- * Orders Opcodes / Functs / Address Modes / Registers Dictionary *
- *----------------------------------------------------------------*/
 typedef enum {
 	/*	First Group	- Two Operands - Z-Flag in PSW	 */
 	MOV = 0,  CMP = 1, ADD = 2, SUB = 2,  LEA = 4,
