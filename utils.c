@@ -1,10 +1,134 @@
 #include <stdio.h>
-#include <stdlib.h>
-#include <ctype.h>
 #include <string.h>
-#include "binary.h"
+#include <ctype.h>
 #include "utils.h"
-#include "dictionary.h"
+
+char *RESERVED_WORDS[] = {
+	"mov", "cmp", "add", "sub", "lea", "clr", "not", "inc",
+	"dec", "jmp", "bne", "jsr",	"red", "prn", "rts", "stop",
+	"r0", "r1", "r2", "r3",	"r4", "r5", "r6", "r7",
+	".data",".string",".entry",".extern"
+};
+
+int isStatementLegal(int statement_cnt,char *word,char *srcoper,char *distoper,char *comma,int *error_flag){
+    int commacnt=0;
+    char *fix;
+    switch(isOperatorLegal(word)){
+        case 14: case 15:
+            if(strcmp(srcoper,"\0")!=0 || strcmp(distoper,"\0")!=0 || strcmp(comma,"\0")!=0 ){
+                printf("*** Error in line: %d, order %s doesn't recieve operands ***\n",statement_cnt,word);
+                *error_flag=3;
+                return 0;
+            }
+            return 1;
+        case 5: case 6: case 7: case 8: case 9: 
+        case 10: case 11: case 12: case 13:
+            if(strcmp(distoper,"\0")!=0 || strcmp(comma,"\0")!=0){
+                printf("*** Error in line: %d, order %s recieves only one operand ***\n",statement_cnt,word);
+                *error_flag=3;
+                return 0;
+            }
+            if(!isOperandLegal(statement_cnt,srcoper,strlen(srcoper)-1)){
+                *error_flag=3;
+                return 0;
+            }
+            return 2;
+        case 0: case 1: case 2: case 3: case 4:
+            if(strcmp(srcoper,"\0")==0 || strcmp(distoper,"\0")==0 || (strcmp(comma,"\0")==0 && distoper[0]==',' && strlen(comma)==1 )){
+                fix=strchr(srcoper,',');
+                if(strcmp(fix,"\0")!=0){
+                    strcpy(distoper,fix+1);
+                    *(fix+1)='\0';
+                } else {
+                    printf("*** Error in line: %d, order %s recieves 2 operands split by comma, one or more operands are missing ***\n",statement_cnt,word);
+                    *error_flag=3;
+                    return 0;
+                }
+            }
+            if(srcoper[strlen(srcoper)-1]==','){
+                commacnt++;
+                if(!isOperandLegal(statement_cnt,srcoper,strlen(srcoper)-2)){
+                    *error_flag=3;
+                    return 0;
+                }
+            } else {
+                if(!isOperandLegal(statement_cnt,srcoper,strlen(srcoper)-1)){
+                    *error_flag=3;
+                    return 0;
+                }
+            }
+            if(distoper[0]==','){
+                commacnt++;
+                if(strlen(distoper)>1){
+                    if(!isOperandLegal(statement_cnt,distoper+1,strlen(distoper)-1)){
+                        *error_flag=3;
+                        return 0;
+                    }
+                } else {
+                    if(!isOperandLegal(statement_cnt,comma,strlen(comma)-1)){
+                        *error_flag=3;
+                        return 0;
+                    }
+                }
+            } else {
+                if(!isOperandLegal(statement_cnt,distoper,strlen(distoper)-1)){
+                    *error_flag=3;
+                    return 0;
+                }
+                if(strcmp(comma,"\0")!=0){
+                    printf("*** Error in line: %d, too many operands ***\n",statement_cnt);
+                    *error_flag=3;
+                    return 0;
+                }
+            }
+            if(commacnt>1 || commacnt==0){
+                printf("*** Error in line: %d, too many commas between operands ***\n",statement_cnt);
+                *error_flag=3;
+                return 0;
+            }    
+            return 3;
+    }
+   return 0;
+}
+
+/* if symbol is not legal label report error */
+int isLabelLegal(int statement_cnt, char *label){
+	int i=1;
+	if(!isalpha(label[0])){
+		printf("*** Error in line: %d, first character of label: %c is not a capital or small letter ***\n",statement_cnt,label[0]);
+		return FALSE;
+	}
+	while(i<strlen(label)){
+		if(!isalnum(label[i])){
+			printf("*** Error in line: %d, the character of label: %c is not a capital or small letter or a digit ***\n",statement_cnt,label[i]);
+			return FALSE;
+		}
+		i++;
+	}
+	i=0;
+	while(i<MAX_RESERVED_WORDS){
+		if(strcmp(label,RESERVED_WORDS[i])==0){
+			printf("*** Error in line: %d, the label %s is a reserved word ***\n",statement_cnt,label);
+			return FALSE;
+		}	
+		i++;
+	}
+	return TRUE;
+}
+
+/** ------------------------------------------------------------*
+ *  Recieves a word, checks if it exists in assembly language   *
+ *  dictionary, and returns its number in the OpTable     		*
+ *  @param word 		word									*
+ *  @return Index in OpTable Dictionary or else -1				*
+ *--------------------------------------------------------------*/
+int isOperatorLegal(char word[]){
+	int i;
+	for(i=0;i<NUMBER_OF_ORDERS;i++)
+		if(strcmp(RESERVED_WORDS[i],word)==0)
+			return i;
+	return -1;
+}
 
 /** ------------------------------------------------------------*
  *  Recieves a statements count, an operand string and strings  *
@@ -26,7 +150,7 @@ int isOperandLegal(int statement_cnt, char *operand,int length){
             return FALSE;
         }
     }
-    if(lookupDict(operand)!=-1 || strcmp(operand,".data")==0 || strcmp(operand,".string")==0
+    if(isOperatorLegal(operand)!=-1 || strcmp(operand,".data")==0 || strcmp(operand,".string")==0
        || strcmp(operand,".entry")==0 || strcmp(operand,".extern")==0){
         printf("*** Error in line: %d, the operand %s is a reserved word ***\n",statement_cnt,operand);
 		return FALSE;

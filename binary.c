@@ -1,134 +1,154 @@
+/** ------------------------------------------------------------*
+ * This file is the most important file, because the functions  *
+ * here are responsible for the creation of the Machine Code.    *
+ *--------------------------------------------------------------*/
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #include <ctype.h>
-#include "dictionary.h"
+#include "assemble.h"
+#include "data.h"
 #include "utils.h"
 #include "symbtab.h"
+#include "values.h"
 
-/* Operations with coded values of opcode and funct for easier use */
-OperatorDict OpTable[]={
-	/*Order  Funct OpCode	Order  Funct OpCode	  Order  Funct OpCode   Order  Funct OpCode */
+/** ------------------------------------------------------------*
+ * The OpTable is an array of structures used for easier data   *
+ * insertion relying on the operator number, when its elements  *
+ * are an Order, a Funct and an OpCode.                         *
+ *--------------------------------------------------------------*/
+OperatorDict OpTable[]={  /*Order  Funct OpCode */
 	{ "mov", FMOV, MOV }, { "cmp", FCMP, CMP }, { "add", FADD, ADD }, { "sub", FSUB, SUB },
     { "lea", FLEA, LEA }, { "clr", FCLR, CLR },	{ "not", FNOT, NOT }, { "inc", FINC, INC },
     { "dec", FDEC, DEC }, { "jmp", FJMP, JMP }, { "bne", FBNE, BNE }, { "jsr", FJSR, JSR },
 	{ "red", FRED, RED }, { "prn", FPRN, PRN }, { "rts", FRTS, RTS }, { "stop", FSTOP, STOP}
 };
 
+/******************** first pass functions *********************/
 /** ------------------------------------------------------------*
- *  Recieves a word, checks if it exists in assembly language   *
- *  dictionary, and returns its number in the OpTable     		*
- *  @param word 		word									*
- *  @return Index in OpTable Dictionary or else -1				*
+ *  Receives operand/operands as a string of numbers checks if  *
+ *  the operands statement is legal, if so divides them every   *
+ *  operand on its own and checks if its legal,if so adds to    * 
+ *  Data Image.                                                 *
+ *  Gives Errors when needed and signals the error flag ERROR(3)*
+ *                                                              *
+ *  @param	statement_cnt   Statement counter					*
+ *  @param	operands		String of numbers                   *
+ *  @param	DATA_IMAGE		Array of unions - operands image    *
+ *  @param	DC				Pointer to data counter+(# operands)*
+ *  @param	error_flag		Pointer to error flag for later stop*
+ *  @return TRUE(1) if change was made or else FALSE(0)			*
  *--------------------------------------------------------------*/
-int lookupDict(char word[]){
-	int i;
-	for(i=0;i<NUMBER_OF_ORDERS;i++)
-		if(strcmp(OpTable[i].key,word)==0)
-			return i;
-	return -1;
-}
+int addDataToImage(int statement_cnt,char *operands,Operand DATA_IMAGE[],int *DC,int *error_flag){
+   	int i,j,n;                          /* n is used as a backward length index (from end to start) */
+    int no_sign_flag=FALSE,no_space_flag=FALSE,no_comma_flag=FALSE;  /* no sign/space/comma allowed if TRUE */
+    char param[MAX_DIGITS];
+    char nums[MAX_STATEMENT_LENGTH];
 
+    /*  Trimming Begining and End of operand/operands */
+    strcpy(nums,operands+strspn(operands," \t"));
+    for (n=strlen(nums)-1; n>=0 ; n--)
+        if(nums[n]!=' ' && nums[n]!='\t' && nums[n]!='\n')
+            break;
+    nums[n+1] = '\0';
 
-
-int analayzeStatement(int statement_cnt,char *word,char *srcoper,char *distoper,char *comma,int *error_flag){
-    int commacnt=0;
-    char *fix;
-    switch(lookupDict(word)){
-        case 14: case 15:
-            if(strcmp(srcoper,"\0")!=0 || strcmp(distoper,"\0")!=0 || strcmp(comma,"\0")!=0 ){
-                printf("*** Error in line: %d, order %s doesn't recieve operands ***\n",statement_cnt,word);
-                *error_flag=3;
-                return 0;
-            }
-            return 1;
-        case 5: case 6: case 7: case 8: case 9: 
-        case 10: case 11: case 12: case 13:
-            if(strcmp(distoper,"\0")!=0 || strcmp(comma,"\0")!=0){
-                printf("*** Error in line: %d, order %s recieves only one operand ***\n",statement_cnt,word);
-                *error_flag=3;
-                return 0;
-            }
-            if(!isOperandLegal(statement_cnt,srcoper,strlen(srcoper)-1)){
-                *error_flag=3;
-                return 0;
-            }
-            return 2;
-        case 0: case 1: case 2: case 3: case 4:
-            if(strcmp(srcoper,"\0")==0 || strcmp(distoper,"\0")==0 || (strcmp(comma,"\0")==0 && distoper[0]==',' && strlen(comma)==1 )){
-                fix=strchr(srcoper,',');
-                if(strcmp(fix,"\0")!=0){
-                    strcpy(distoper,fix+1);
-                    *(fix+1)='\0';
-                } else {
-                    printf("*** Error in line: %d, order %s recieves 2 operands split by comma, one or more operands are missing ***\n",statement_cnt,word);
-                    *error_flag=3;
-                    return 0;
+    /*  check if data statement is legal    */
+    if(isDataLegal(statement_cnt,nums,n)){
+        for(i=0,j=0;i<=n+1;i++){
+            if(nums[i]=='-' || nums[i]=='+'){   
+                if(no_sign_flag==TRUE){               /* Checks for two following signs or a sign after a digit */
+                    printf("*** Error in line: %d, you cant use multiple signs consequently or between digits ***\n",statement_cnt);
+                    return FALSE;
                 }
-            }
-            if(srcoper[strlen(srcoper)-1]==','){
-                commacnt++;
-                if(!isOperandLegal(statement_cnt,srcoper,strlen(srcoper)-2)){
-                    *error_flag=3;
-                    return 0;
-                }
+                no_space_flag=TRUE;
+                no_sign_flag=TRUE;
+                param[j]=nums[i];
+                param[j+1]='\0';
+                j++;
             } else {
-                if(!isOperandLegal(statement_cnt,srcoper,strlen(srcoper)-1)){
-                    *error_flag=3;
-                    return 0;
-                }
-            }
-            if(distoper[0]==','){
-                commacnt++;
-                if(strlen(distoper)>1){
-                    if(!isOperandLegal(statement_cnt,distoper+1,strlen(distoper)-1)){
-                        *error_flag=3;
-                        return 0;
+                if(isdigit(nums[i])){               /* Checks for spaces between digits or between a sign and a digit */
+                    if(no_space_flag==TRUE && (nums[i-1]==' ' || nums[i-1]=='\t')){
+                        printf("*** Error in line: %d, you cant use spaces and \\t between digits of the same number or between a sign and a digit ***\n",statement_cnt);
+                        return FALSE;
                     }
+                    no_comma_flag=FALSE;
+                    no_space_flag=TRUE;
+                    no_sign_flag=TRUE;
+                    param[j]=nums[i];
+                    param[j+1]='\0';
+                    j++;
                 } else {
-                    if(!isOperandLegal(statement_cnt,comma,strlen(comma)-1)){
-                        *error_flag=3;
-                        return 0;
+                    if(nums[i]==',' || nums[i]=='\0'){  /* Checks for two following commas */
+                        if(no_comma_flag==TRUE)
+                            printf("*** Error in line: %d, you cant use multiple commas consequently there must be digits between commas ***\n",statement_cnt);
+                        no_comma_flag=TRUE;
+                        no_space_flag=FALSE;
+                        no_sign_flag=FALSE;
+                        j=0;
+                        DATA_IMAGE[(*DC)].val.sign=atoi(param);
+                        (*DC)++;
                     }
                 }
-            } else {
-                if(!isOperandLegal(statement_cnt,distoper,strlen(distoper)-1)){
-                    *error_flag=3;
-                    return 0;
-                }
-                if(strcmp(comma,"\0")!=0){
-                    printf("*** Error in line: %d, too many operands ***\n",statement_cnt);
-                    *error_flag=3;
-                    return 0;
-                }
             }
-            if(commacnt>1 || commacnt==0){
-                printf("*** Error in line: %d, too many commas between operands ***\n",statement_cnt);
-                *error_flag=3;
-                return 0;
-            }    
-            return 3;
+        }
+        return TRUE;
     }
-   return 0;
+    return FALSE;
 }
 
-/* bincode first word and every infoword in meyade immediate addressing*/
-int makeFirstBinary(MachineOrder CODE_IMAGE[], int statement_cnt,int IC,int L,char word[],char oper[],char distoper[],char comma[],int *error_flag){
-    int order,num,R,cflag=0;
-    IC-=100;
+/** ------------------------------------------------------------*
+ *  Receives operands/operands as a string of characters checks *
+ *  if operands statement is legal, if so adds to Data Image.   *
+ *  Gives Errors when needed and signals the error flag ERROR(3)*
+ *                                                              *
+ *  @param	statement_cnt   Statement counter					*
+ *  @param	operands		String of characters                *
+ *  @param	DATA_IMAGE		Array of unions - operands image    *
+ *  @param	DC				Pointer to data counter	+ (str len) *
+ *  @param	error_flag		Pointer to error flag for later stop*
+ *  @return TRUE(1) if change was made or else FALSE(0)			*
+ *--------------------------------------------------------------*/
+int addStringToImage(int statement_cnt,char *operands,Operand DATA_IMAGE[],int *DC, int *error_flag){
+    char *pi;           /* Pointer Index */ 
+    char *last_char;    
+    if(isStringLegal(statement_cnt,operands)){
+        pi=strchr(operands,'\"')+1;
+        last_char=strrchr(operands,'\"');
+        while(pi<last_char){
+            DATA_IMAGE[(*DC)].val.unsign=*pi;
+            (*DC)++;
+            pi++;
+        }
+        DATA_IMAGE[(*DC)].val.unsign='\0';
+        (*DC)++;
+        return TRUE;
+    }
+    return FALSE;  
+}
 
-    /*  making sure srcoper and distoper have the needed values if needed*/
-    if(oper[strlen(oper)-1]==',')
-        oper[strlen(oper)-1]='\0';
-    if(distoper[0]==',')
-        distoper=distoper+1;
-    if(strcmp(distoper,"\0")==0)
-        distoper=comma;
-    if(distoper[0]==',')
-        distoper=distoper+1;
-    if(strcmp(distoper,"\0")==0)
-        distoper=oper;
+/** ------------------------------------------------------------*
+ *  Make binary code of the first word and every infoword in    *
+ *  immediate and register direct addressing modes.             *
+ *  Gives Errors when needed and signals the error flag ERROR(3)*
+ *                                                              *
+ *  @param	statement_cnt   statement counter					*
+ *  @param	CODE_IMAGE		Array of structs representing orders*
+ *  @param	IC				Pointer to code counter				*
+ *  @param	word		    string with assembly word           *
+ *  @param	oper			string with src operand if theres 2 *
+ *                          operands or dist operand if theres 1*
+ *  @param 	distoper		string with dist operand if theres 2*
+ *  @param	error_flag		Pointer to error flag for later stop*
+ *  @return TRUE(1) if change was made or else FALSE(0)			*
+ *--------------------------------------------------------------*/
+int makeFirstBinary(int statement_cnt, MachineOrder CODE_IMAGE[], int IC,char word[],char oper[],char distoper[],int *error_flag){
+    int order,num,reg,cflag=0;
+    IC-=CODE_BEGIN;
+
+   
 
     /*  getting command from table */
-    order=lookupDict(word);
+    order=isOperatorLegal(word);
     /* works for all */
     CODE_IMAGE[IC].flag=1;
     CODE_IMAGE[IC].are=0xA;
@@ -165,13 +185,13 @@ int makeFirstBinary(MachineOrder CODE_IMAGE[], int statement_cnt,int IC,int L,ch
                 CODE_IMAGE[IC+1].flag=2;
                 num=atoi(oper+1);
                 switch (num) { 
-                    case 0: R=R0; break;    case 1: R=R1; break;
-                    case 2: R=R2; break;    case 3: R=R3; break;
-                    case 4: R=R4; break;    case 5: R=R5; break;
-                    case 6: R=R6; break;    case 7: R=R7; break;
+                    case 0: reg=R0; break;    case 1: reg=R1; break;
+                    case 2: reg=R2; break;    case 3: reg=R3; break;
+                    case 4: reg=R4; break;    case 5: reg=R5; break;
+                    case 6: reg=R6; break;    case 7: reg=R7; break;
                     default:      break;
                 }          
-                CODE_IMAGE[IC+1].optype.src_oper.val.sign=R;
+                CODE_IMAGE[IC+1].optype.src_oper.val.sign=reg;
                 CODE_IMAGE[IC+1].are=0xA;
             }
             cflag=1;
@@ -192,13 +212,13 @@ int makeFirstBinary(MachineOrder CODE_IMAGE[], int statement_cnt,int IC,int L,ch
                 CODE_IMAGE[IC+cflag+1].flag=3;
                 num=atoi(distoper+1);
                 switch (num) { 
-                    case 0: R=R0; break;    case 1: R=R1; break;
-                    case 2: R=R2; break;    case 3: R=R3; break;
-                    case 4: R=R4; break;    case 5: R=R5; break;
-                    case 6: R=R6; break;    case 7: R=R7; break;
+                    case 0: reg=R0; break;    case 1: reg=R1; break;
+                    case 2: reg=R2; break;    case 3: reg=R3; break;
+                    case 4: reg=R4; break;    case 5: reg=R5; break;
+                    case 6: reg=R6; break;    case 7: reg=R7; break;
                     default:      break;
                 }          
-                CODE_IMAGE[IC+cflag+1].optype.dist_oper.val.sign=R;
+                CODE_IMAGE[IC+cflag+1].optype.dist_oper.val.sign=reg;
                 CODE_IMAGE[IC+cflag+1].are=0xA;
             }
             if(distoper[0]=='#'){
@@ -212,6 +232,24 @@ int makeFirstBinary(MachineOrder CODE_IMAGE[], int statement_cnt,int IC,int L,ch
 	return 0;
 }
 
+
+/** ------------------------------------------------------------*
+ *  Implementation of first pass Function 						*
+ *  Checks for Blanks & Comments & Entry to ignore, Labels to 	*
+ *  add to Symbol Table, Data or Strings or Extern to Data Image* 
+ *  Gives Warnings and Errors when needed and stops only after  *
+ *  finishing calls other funtions to analyze statements or to 	*
+ *  convert to binary on success.								*
+ *  @param	statement		a statement from the file			*
+ *  @param	statement_cnt   statement counter					*
+ *  @param	CODE_IMAGE		Array of structs representing orders*
+ *  @param	IC				Pointer to code counter				*
+ *  @param	DATA_IMAGE		Array of unions representing operand*
+ *  @param	DC				Pointer to data counter				*
+ *  @param 	Tlinkptr		Pointer to head of symbol table		*
+ *  @param	error_flag		Pointer to error flag for later stop*
+ *  @return TRUE(1) if change was made or else FALSE(0)			*
+ *--------------------------------------------------------------*/
 int makeSecondBinary(int statement_cnt,MachineOrder CODE_IMAGE[],Operand DATA_IMAGE[], int *IC,char word[],char oper[],char distoper[],char comma[],Tlinkptr *head,Tlinkptr *xhead,int *error_flag){
     int order,cflag=0;
     Tlinkptr runner=NULL;
@@ -230,7 +268,7 @@ int makeSecondBinary(int statement_cnt,MachineOrder CODE_IMAGE[],Operand DATA_IM
     
     /*printf("%d \n",*IC);
       getting command from table */
-    order=lookupDict(word);
+    order=isOperatorLegal(word);
     switch(order){
         case 0: case 1: case 2: case 3: case 4:
             if(!((strlen(oper)==2 && oper[0]=='r' && isdigit(oper[1]) && oper[1]>='0' && oper[1]<='7') || oper[0]=='#' || oper[0]=='%')){
@@ -292,88 +330,9 @@ int addBinaryData(MachineOrder CODE_IMAGE[], int IC,Operand DATA_IMAGE[],int DC)
     CODE_IMAGE[IC].are=0xA;
     CODE_IMAGE[IC].flag=2;
     CODE_IMAGE[IC].optype.src_oper.val.sign=DATA_IMAGE[DC].val.sign;  
-    return CHANGED;
+    return TRUE;
 }
 
 
 
 
-int add_data_to_image(int statement_cnt,char *operands,Operand DATA_IMAGE[],int *DC,int *error_flag){
-   	int i,j;
-    int sign_flag=0,space_flag=0,comma_flag=0,length;
-    char param[MAX_DIGITS];
-    char nums[80];
-
-    /*  Trimming Begining and end operand */
-    strcpy(nums,operands+strspn(operands," \t"));
-    for (length=strlen(nums)-1; length>=0 ; length--)
-        if(nums[length]!=' ' && nums[length]!='\t' && nums[length]!='\n')
-            break;
-    nums[length+1] = '\0';
-
-    if(isDataLegal(statement_cnt,nums,length)){
-        for(i=0,j=0;i<=length+1;i++){
-            if(nums[i]=='-' || nums[i]=='+'){
-                if(sign_flag==1){
-                    printf("*** Error in line: %d, you cant use multiple signs consequently or between digits ***\n",statement_cnt);
-                    return NOCHANGE;
-                }
-                space_flag=1;
-                sign_flag=1;
-                param[j]=nums[i];
-                param[j+1]='\0';
-                j++;
-            } else {
-                if(isdigit(nums[i])){
-                    if(space_flag==1 && (nums[i-1]==' ' || nums[i-1]=='\t')){
-                        printf("*** Error in line: %d, you cant use spaces and \\t between digits of the same number or between a sign and a digit ***\n",statement_cnt);
-                        return NOCHANGE;
-                    }
-                    comma_flag=0;
-                    space_flag=1;
-                    sign_flag=1;
-                    param[j]=nums[i];
-                    param[j+1]='\0';
-                    j++;
-                } else {
-                    if(nums[i]==',' || nums[i]=='\0'){
-                        if(comma_flag==1)
-                            printf("*** Error in line: %d, you cant use multiple commas consequently there must be digits between commas ***\n",statement_cnt);
-                        comma_flag=1;
-                        space_flag=0;
-                        sign_flag=0;
-                        j=0;
-                        DATA_IMAGE[(*DC)].val.sign=atoi(param);
-                        printf("DC: %d data image: %d atoi param: %d  param: %s\n",(*DC),DATA_IMAGE[(*DC)].val.sign,atoi(param),param);
-                        (*DC)++;
-                    }
-                }
-            }
-        }
-        return CHANGED;
-    }
-    return NOCHANGE;
-}
-
-
-
-/* add string to data image and DC+(length of string) */
-int add_string_to_image(int statement_cnt,char *operands,Operand DATA_IMAGE[],int *DC, int *error_flag){
-    char *pi;
-    char *last_char;
-    if(isStringLegal(statement_cnt,operands)){
-        pi=strchr(operands,'\"')+1;
-        last_char=strrchr(operands,'\"');
-        while(pi<last_char){
-            DATA_IMAGE[(*DC)].val.unsign=*pi;
-            printf("DC: %d data image: %c param: %c\n",(*DC),DATA_IMAGE[(*DC)].val.unsign,'\0');
-            (*DC)++;
-            pi++;
-        }
-        DATA_IMAGE[(*DC)].val.unsign='\0';
-        printf("DC: %d data image: %c param: %c\n",(*DC),DATA_IMAGE[(*DC)].val.unsign,'\0');
-        (*DC)++;
-        return CHANGED;
-    }
-    return NOCHANGE;  
-}

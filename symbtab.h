@@ -1,13 +1,6 @@
 #ifndef _SYMBTAB_
 #define _SYMBTAB_
 
-#define NOCHANGE 0
-#define CHANGED 1
-#define UPDATE 2
-#define ERROR 3
-#define FALSE 0
-#define TRUE 1
-
 /* pointer to table link */
 typedef struct tlink *Tlinkptr;
 

@@ -1,11 +1,9 @@
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
-#include "files.h"
-#include "binary.h"
-#include "dictionary.h"
+#include "assemble.h"
+#include "data.h"
 #include "symbtab.h"
-
+#include "utils.h"
 
 /** ------------------------------------------------------------*
  *  Code Image - Array [Struct{Union,are,flag}]					*

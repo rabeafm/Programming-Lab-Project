@@ -1,11 +1,10 @@
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
-#include "dictionary.h"
+#include "assemble.h"
+#include "data.h"
+#include "symbtab.h"
 #include "utils.h"
 
-#include "binary.h"
-#include "symbtab.h"
 
 /** ------------------------------------------------------------*
  *  Implementation of first pass Function 						*
@@ -48,12 +47,12 @@ int firstPass(char *statement,int statement_cnt,MachineOrder CODE_IMAGE[],int *I
 	if(isData(word)) {
 		if(label_length)
 			add_symbol(statement_cnt,label,DC,word,head,error_flag);
-		return add_data_to_image(statement_cnt,strstr(statement,".data")+5,DATA_IMAGE,DC,error_flag);
+		return addDataToImage(statement_cnt,strstr(statement,".data")+5,DATA_IMAGE,DC,error_flag);
 	}
 	if(isString(word)){
 		if(label_length)
 			add_symbol(statement_cnt,label,DC,word,head,error_flag);
-		return add_string_to_image(statement_cnt,strstr(statement,".string")+7,DATA_IMAGE,DC,error_flag);
+		return addStringToImage(statement_cnt,strstr(statement,".string")+7,DATA_IMAGE,DC,error_flag);
 	}
 
 	/* Ignore Enrty*/
@@ -84,25 +83,37 @@ int firstPass(char *statement,int statement_cnt,MachineOrder CODE_IMAGE[],int *I
 	if(strcmp(tmi,"\0")!=0){
 		printf("*** Error in line: %d, too many operands (Maximum number of operands is two) ***\n",statement_cnt);
 		*error_flag = 3;
-		return NOCHANGE;
+		return FALSE;
 	}
 
 	/* lookup operator in operator list if doesnt exist report error*/
-	if(lookupDict(word)==-1){
+	if(isOperatorLegal(word)==-1){
 		printf("*** Error in line: %d, illegal command %s check the spelling (commands must be lowercase)  ***\n",statement_cnt,word);
 		*error_flag = 3;
-		return NOCHANGE;
+		return FALSE;
 	}
 
 	/* Analayze operand structure and check and calculate number of words needed ->L */
-	L=analayzeStatement(statement_cnt,word,srcoper,distoper,comma,error_flag);
+	L=isStatementLegal(statement_cnt,word,srcoper,distoper,comma,error_flag);
 
 	if(*error_flag!=3) {
-		makeFirstBinary(CODE_IMAGE, statement_cnt,*IC,L,word,srcoper,distoper,comma,error_flag);
+		 /*  making sure srcoper and distoper have the needed values if needed*/
+    	if(srcoper[strlen(srcoper)-1]==',')
+			srcoper[strlen(srcoper)-1]='\0';
+    	if(distoper[0]==',')
+			strcpy(distoper,distoper+1);
+    	if(strcmp(distoper,"\0")==0)
+			strcpy(distoper,comma);
+    	if(distoper[0]==',')
+			strcpy(distoper,distoper+1);
+    	if(strcmp(distoper,"\0")==0){
+        	strcpy(distoper,srcoper);
+		}
+		makeFirstBinary(statement_cnt, CODE_IMAGE, *IC,word,srcoper,distoper,error_flag);
 	}
 	(*IC)+=L;	/*update IC=IC+L*/
 
-	return CHANGED;
+	return TRUE;
 }
 
 
@@ -130,7 +141,7 @@ int secondPass(char *statement,int statement_cnt,int *IC,int *DC,Tlinkptr *head,
 
 	/*	Checking for Blank or Comment Lines - Should Ignore Them  */
 	if(isBlank(word) || isComment(word)){
-		return NOCHANGE;
+		return FALSE;
 	}
 	/* if first word is Label if it is mark the label flag and put the data in the right variables */ 
 	if(isLabel(word)){
@@ -139,11 +150,11 @@ int secondPass(char *statement,int statement_cnt,int *IC,int *DC,Tlinkptr *head,
 	
 	/* if data / string / extern ignore */
 	if(isData(word) || isString(word)){
-		return NOCHANGE;
+		return FALSE;
 	}
 
 	if(isExtern(word)){
-		return NOCHANGE;
+		return FALSE;
 	}
 
 	if(isEntry(word)){
@@ -152,14 +163,14 @@ int secondPass(char *statement,int statement_cnt,int *IC,int *DC,Tlinkptr *head,
 		if(runner){
 			if((*runner).is_extern){
 				printf("*** Error in line: %d - the symbol %s was already defined as external it cant be defined as entry ***\n",statement_cnt,srcoper);
-				return NOCHANGE;
+				return FALSE;
 			}
 			(*runner).is_entry=1;
-			return CHANGED;
+			return TRUE;
 		} else {
 			printf("*** Error in line: %d - the symbol %s was not found in the symbol table ***\n",statement_cnt,srcoper);
 			(*error_flag)=3;
-			return NOCHANGE;
+			return FALSE;
 		}
 	}
 	/* bincode rest of operand infowords, based on addressing

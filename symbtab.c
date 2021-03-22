@@ -1,50 +1,8 @@
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
-#include <ctype.h>
+#include <stdlib.h>
 #include "symbtab.h"
-
-#define MAX_RESERVED_WORDS 30
-#define MAX_LENGTH_OF_RESERVED_WORDS 7
-#define MAX_EXTERNS 30
-
-char RES_WORDS[MAX_RESERVED_WORDS][MAX_LENGTH_OF_RESERVED_WORDS] = {
-	"mov", "cmp", "add", "sub",
-	"lea", "clr", "not", "inc",
-	"dec", "jmp", "bne", "jsr",
-	"red", "prn", "rts", "stop",
-	"r0", "r1", "r2", "r3",
-	"r4", "r5", "r6", "r7",
-	".data",".string",".entry",".extern"
-};
-
-char EXTERNS[MAX_EXTERNS][2][31];
-
-
-/* if symbol is not legal label report error */
-int isLabelLegal(int statement_cnt, char *label){
-	int i=1;
-	if(!isalpha(label[0])){
-		printf("*** Error in line: %d, first character of label: %c is not a capital or small letter ***\n",statement_cnt,label[0]);
-		return FALSE;
-	}
-	while(i<strlen(label)){
-		if(!isalnum(label[i])){
-			printf("*** Error in line: %d, the character of label: %c is not a capital or small letter or a digit ***\n",statement_cnt,label[i]);
-			return FALSE;
-		}
-		i++;
-	}
-	i=0;
-	while(i<MAX_RESERVED_WORDS){
-		if(strcmp(label,RES_WORDS[i])==0){
-			printf("*** Error in line: %d, the label %s is a reserved word ***\n",statement_cnt,label);
-			return FALSE;
-		}	
-		i++;
-	}
-	return TRUE;
-}
+#include "utils.h"
 
 int addExternSymbol(char *label, int DC, Tlinkptr *head, int *error_flag){
 	Tlinkptr runner = *head;

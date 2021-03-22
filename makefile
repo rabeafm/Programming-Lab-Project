@@ -4,7 +4,7 @@ assemble.o: assemble.c
 	gcc -c -ansi -Wall -pedantic assemble.c -o o/assemble.o
 binary.o: binary.c
 	gcc -c -ansi -Wall -pedantic binary.c -o o/binary.o
-files.o: files.c files.h
+files.o: files.c 
 	gcc -c -ansi -Wall -pedantic files.c -o o/files.o
 passes.o: passes.c
 	gcc -c -ansi -Wall -pedantic passes.c -o o/passes.o
