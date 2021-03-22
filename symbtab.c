@@ -46,6 +46,35 @@ int isLabelLegal(int statement_cnt, char *label){
 	return TRUE;
 }
 
+int addExternSymbol(char *label, int DC, Tlinkptr *head, int *error_flag){
+	Tlinkptr runner = *head;
+
+	int label_len = strlen(label);
+	if(label[label_len-1]==':') {
+		label[label_len-1]='\0';
+		label_len--;
+	}
+		
+	/* if Table is empty add label to head */
+	if(!(*head)){
+		*head = (Tlinkptr) malloc(sizeof(Tlink));
+		strcpy((**head).symbol,label);
+		(**head).value=DC;
+		(**head).is_extern=1;
+		printf("Added to Extern table: %s code: %d data: %d extern: %d value: %d \n",(*head)->symbol,(*head)->is_code,(*head)->is_data,(*head)->is_extern, (*head)->value);
+		return 1;
+	}
+	while((*runner).next){
+		runner = (*runner).next;
+	}
+	(*runner).next = (Tlinkptr) malloc(sizeof(Tlink));
+	strcpy((*((*runner).next)).symbol,label);
+	(*((*runner).next)).value=DC;
+	(*((*runner).next)).is_extern=1;
+	printf("Added to Extern table: %s code: %d data: %d extern: %d value: %d \n",((*runner).next)->symbol,((*runner).next)->is_code,((*runner).next)->is_data,((*runner).next)->is_extern, ((*runner).next)->value);
+	return 1;	
+}
+
 int add_symbol(int statement_cnt,char *label, int *DC, char *word, Tlinkptr *head, int *error_flag){
 	Tlinkptr runner = *head;
 	int label_len = strlen(label);
@@ -115,15 +144,6 @@ int add_symbol(int statement_cnt,char *label, int *DC, char *word, Tlinkptr *hea
 	}
 	printf("Added to symbol table: %s code: %d data: %d extern: %d value: %d \n",((*runner).next)->symbol,((*runner).next)->is_code,((*runner).next)->is_data,((*runner).next)->is_extern, ((*runner).next)->value);
 	return 1;	
-}
-
-int addExtern(srcoper,statement_cnt){
-	/*int i=0;
-	while(EXTERNS[i++][0]);
-	EXTERNS[i][0]=srcoper;
-	EXTERNS[i][1]=statement_cnt;
-	EXTERNS[i+1][0]=NULL;*/
-	return 1;
 }
 
 

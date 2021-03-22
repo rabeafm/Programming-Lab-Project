@@ -27,6 +27,7 @@ typedef struct {
 } Tlist;
 
 void updateDataSymbols(int ,Tlinkptr *);
+int addExternSymbol(char *,int ,Tlinkptr *, int *);
 
 int add_symbol(int,char *,int *,char *, Tlinkptr *, int *);
 

@@ -16,6 +16,7 @@
 MachineOrder CODE_IMAGE[MAX_MACHINE_ORDERS];
 Operand DATA_IMAGE[MAX_DATA_ORDERS];
 Tlist SYMB_TABLE;
+Tlist EXTERN_TABLE;
 static int ICF,DCF;
 
 /** ------------------------------------------------------------*
@@ -69,7 +70,7 @@ int readFile(char *file){
 	/****************** Second Pass *****************/
 	while(fgets(statement,MAX_STATEMENT_LENGTH,fd)){
 		statement_cnt++;
-		secondPass(statement,statement_cnt,&IC,&DC,&(SYMB_TABLE.head),DATA_IMAGE,CODE_IMAGE,&error_flag);
+		secondPass(statement,statement_cnt,&IC,&DC,&(SYMB_TABLE.head),DATA_IMAGE,CODE_IMAGE,&(EXTERN_TABLE.head),&error_flag);
 	}
 
 	/******* Adding Data Image to Code ImagebinarySecond Pass **********/
@@ -98,10 +99,11 @@ int readFile(char *file){
  *--------------------------------------------------------------*/
 int writeFiles(char *file){
 	FILE *fd;
+	Tlinkptr runner;
 	char file_ext[MAX_FILENAME_LENGTH]="\0";
 	char statement[MAX_STATEMENT_LENGTH]="\0";
 	int statement_cnt=CODE_BEGIN;
-	int i=0;
+	int i=0,entry_flag=0;
 
 	/* If data is not accessable stop function */
 	strcat(file_ext,file);
@@ -136,8 +138,47 @@ int writeFiles(char *file){
 		i++;
 		fputs(statement,fd);
 	}
-	printTable(SYMB_TABLE.head);	
 	fclose(fd);
+
+	if(EXTERN_TABLE.head){
+		strcpy(file_ext,file);
+		strcat(file_ext,".ext");
+		if(!(fd=fopen(file_ext,"w+"))){
+			printf("*** Error - Cannot open the file %s for writing output, check if you have permission or disk space. ***\n",file_ext);
+			return FALSE;
+		}
+		printf("The file %s opened, writing data:\n",file_ext);
+		runner=EXTERN_TABLE.head;
+		while(runner){
+			sprintf(statement,"%s %04d\n",runner->symbol,CODE_BEGIN+runner->value);
+			runner=runner->next;
+			fputs(statement,fd);
+		}
+	}
+	fclose(fd);
+	
+	strcpy(file_ext,file);
+	strcat(file_ext,".ent");
+	runner=SYMB_TABLE.head;
+	while(runner){
+		if((*runner).is_entry){
+			if(entry_flag==0){
+				if(!(fd=fopen(file_ext,"w+"))){
+					printf("*** Error - Cannot open the file %s for writing output, check if you have permission or disk space. ***\n",file_ext);
+					return FALSE;
+				}
+				entry_flag=1;
+				printf("The file %s opened, writing data:\n",file_ext);
+			}
+			sprintf(statement,"%s %04d\n",runner->symbol,runner->value);
+			fputs(statement,fd);
+		}
+		runner = runner->next;
+	}
+	fclose(fd);
+
+	printTable(EXTERN_TABLE.head);
+	printTable(SYMB_TABLE.head);	
 	freeTable(SYMB_TABLE.head);
 	return TRUE;
 }

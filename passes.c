@@ -29,7 +29,7 @@ int firstPass(char *statement,int statement_cnt,MachineOrder CODE_IMAGE[],int *I
 	char label[32]="\0",word[32]="\0",srcoper[32]="\0",distoper[32]="\0",comma[32]="\0",tmi[32]="\0";
 	int label_length = 0;
 	int L=0;				/* Variable Defined in Algorithem used for counting extra Operands per statement  */
-	
+
 	/*	Checking for Blank or Comment Lines - Should Ignore Them  */
 	sscanf(statement,"%s:",word);
 	if(isBlank(word) || isComment(word)){
@@ -62,7 +62,6 @@ int firstPass(char *statement,int statement_cnt,MachineOrder CODE_IMAGE[],int *I
 			printf("*** Warning in line: %d, the label %s defined before .entry has no meaning and will be ignored. ***\n",statement_cnt,label);
 		return FALSE;
 	}
-
 	/* Handle Extern - should check symbol table issues*/
 	if(isExtern(word)){
 		if(label_length){
@@ -94,12 +93,15 @@ int firstPass(char *statement,int statement_cnt,MachineOrder CODE_IMAGE[],int *I
 		*error_flag = 3;
 		return NOCHANGE;
 	}
+
 	/* Analayze operand structure and check and calculate number of words needed ->L */
 	L=analayzeStatement(statement_cnt,word,srcoper,distoper,comma,error_flag);
 
-	if(*error_flag!=3) 
+	if(*error_flag!=3) {
 		makeFirstBinary(CODE_IMAGE, statement_cnt,*IC,L,word,srcoper,distoper,comma,error_flag);
+	}
 	(*IC)+=L;	/*update IC=IC+L*/
+
 	return CHANGED;
 }
 
@@ -120,7 +122,7 @@ int firstPass(char *statement,int statement_cnt,MachineOrder CODE_IMAGE[],int *I
  *  @param	error_flag		Pointer to error flag for later stop*
  *  @return TRUE(1) if change was made or else FALSE(0)			*
  *--------------------------------------------------------------*/
-int secondPass(char *statement,int statement_cnt,int *IC,int *DC,Tlinkptr *head,Operand DATA_IMAGE[],MachineOrder CODE_IMAGE[],int *error_flag){
+int secondPass(char *statement,int statement_cnt,int *IC,int *DC,Tlinkptr *head,Operand DATA_IMAGE[],MachineOrder CODE_IMAGE[],Tlinkptr *xhead,int *error_flag){
 	char word[32]="\0",srcoper[32]="\0",distoper[32]="\0",comma[32]="\0";
 	Tlinkptr runner;
 	
@@ -141,7 +143,6 @@ int secondPass(char *statement,int statement_cnt,int *IC,int *DC,Tlinkptr *head,
 	}
 
 	if(isExtern(word)){
-		addExtern(srcoper,statement_cnt);
 		return NOCHANGE;
 	}
 
@@ -165,10 +166,9 @@ int secondPass(char *statement,int statement_cnt,int *IC,int *DC,Tlinkptr *head,
 	   every operand with symbol  find symbol value from table 
 	   and if not in table give error.
 	   if has external attribute add infoword address tolist of externals 
-	   i can use IC and L .
+	   i can use IC and L .*/
 	if(*error_flag!=3) 
-	   */
-	makeSecondBinary(statement_cnt,CODE_IMAGE,DATA_IMAGE,IC,word,srcoper,distoper,comma,head,error_flag);
+		makeSecondBinary(statement_cnt,CODE_IMAGE,DATA_IMAGE,IC,word,srcoper,distoper,comma,head,xhead,error_flag);
 	
 
 	

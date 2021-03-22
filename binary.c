@@ -114,6 +114,7 @@ int analayzeStatement(int statement_cnt,char *word,char *srcoper,char *distoper,
 int makeFirstBinary(MachineOrder CODE_IMAGE[], int statement_cnt,int IC,int L,char word[],char oper[],char distoper[],char comma[],int *error_flag){
     int order,num,R,cflag=0;
     IC-=100;
+
     /*  making sure srcoper and distoper have the needed values if needed*/
     if(oper[strlen(oper)-1]==',')
         oper[strlen(oper)-1]='\0';
@@ -211,7 +212,7 @@ int makeFirstBinary(MachineOrder CODE_IMAGE[], int statement_cnt,int IC,int L,ch
 	return 0;
 }
 
-int makeSecondBinary(int statement_cnt,MachineOrder CODE_IMAGE[],Operand DATA_IMAGE[], int *IC,char word[],char oper[],char distoper[],char comma[],Tlinkptr *head,int *error_flag){
+int makeSecondBinary(int statement_cnt,MachineOrder CODE_IMAGE[],Operand DATA_IMAGE[], int *IC,char word[],char oper[],char distoper[],char comma[],Tlinkptr *head,Tlinkptr *xhead,int *error_flag){
     int order,cflag=0;
     Tlinkptr runner=NULL;
     
@@ -238,8 +239,10 @@ int makeSecondBinary(int statement_cnt,MachineOrder CODE_IMAGE[],Operand DATA_IM
                     CODE_IMAGE[(*IC)].optype.operator.src_add=ADD_DIR;
                     CODE_IMAGE[(*IC)+1].flag=2;          
                     CODE_IMAGE[(*IC)+1].optype.src_oper.val.sign=(*runner).value;
-                    if ((*runner).is_extern)
+                    if ((*runner).is_extern){
+                        addExternSymbol(oper,(*IC)+1,xhead,error_flag);
                         CODE_IMAGE[(*IC)+1].are=0xE;
+                    }
                     else
                         CODE_IMAGE[(*IC)+1].are=0xC;
                 } else {
@@ -256,9 +259,10 @@ int makeSecondBinary(int statement_cnt,MachineOrder CODE_IMAGE[],Operand DATA_IM
                     CODE_IMAGE[(*IC)].optype.operator.dist_add=ADD_DIR;
                     CODE_IMAGE[(*IC)+cflag+1].flag=3;          
                     CODE_IMAGE[(*IC)+cflag+1].optype.dist_oper.val.unsign=(*runner).value;
-                    if ((*runner).is_extern)
+                    if ((*runner).is_extern){
+                        addExternSymbol(distoper,(*IC)+cflag+1,xhead,error_flag);
                         CODE_IMAGE[(*IC)+cflag+1].are=0xE;
-                    else
+                    } else
                         CODE_IMAGE[(*IC)+cflag+1].are=0xC;
                 } else {
                     printf("*** Error in line: %d, Symbol %s given as second operand wasnt found in symbol table ***\n",statement_cnt,oper);
