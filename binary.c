@@ -127,8 +127,8 @@ int addStringToImage(int statement_cnt,char *operands,Operand DATA_IMAGE[],int *
 }
 
 /** ------------------------------------------------------------*
- *  Make binary code of the first word and every infoword in    *
- *  immediate and register direct addressing modes.             *
+ *  After the first pass, Make binary code of the first word &  *
+ *  infowords in immediate and register direct addressing modes.*
  *  Gives Errors when needed and signals the error flag ERROR(3)*
  *                                                              *
  *  @param	statement_cnt   statement counter					*
@@ -139,135 +139,115 @@ int addStringToImage(int statement_cnt,char *operands,Operand DATA_IMAGE[],int *
  *                          operands or dist operand if theres 1*
  *  @param 	distoper		string with dist operand if theres 2*
  *  @param	error_flag		Pointer to error flag for later stop*
- *  @return TRUE(1) if change was made or else FALSE(0)			*
+ *  @return TRUE(1) if change was made, FALSE(0) if found Errors*
  *--------------------------------------------------------------*/
 int makeFirstBinary(int statement_cnt, MachineOrder CODE_IMAGE[], int IC,char word[],char oper[],char distoper[],int *error_flag){
-    int order,num,reg,cflag=0;
+    int order,reg,src_flag=FALSE;       /* reg is used for passing the register code*/
+                                        /* src_flag used for correcting next line for dist operand if operator recieves 2 operands*/
     IC-=CODE_BEGIN;
-
-   
-
-    /*  getting command from table */
+    /* getting order number from table */
     order=isOperatorLegal(word);
-    /* works for all */
-    CODE_IMAGE[IC].flag=1;
+    /* Filling Data for All */
+    CODE_IMAGE[IC].flag=OPERATOR_FLAG;
     CODE_IMAGE[IC].are=0xA;
     CODE_IMAGE[IC].optype.operator.opcode=OpTable[order].opcode;
     CODE_IMAGE[IC].optype.operator.funct=OpTable[order].funct;
     CODE_IMAGE[IC].optype.operator.dist_add=NO_ADD;
-    CODE_IMAGE[IC].optype.operator.src_add=NO_ADD;    
+    CODE_IMAGE[IC].optype.operator.src_add=NO_ADD;
+    /* Updating different cases based on operand */
     switch(order){
-        case 4:
+        case 4:             /* Special case 4 Errors*/ 
             if(oper[0]=='#'){
-                printf("*** Error in line: %d, Operator -%s- cannot use immediate addresseing as first operand ***\n",statement_cnt,OpTable[order].key);
-                *error_flag=3;
+                printf("*** Error in line: %d, Operator %s cannot use immediate addresseing as first operand ***\n",statement_cnt,OpTable[order].key);
+                *error_flag=ERROR;
                 break;
             }
             if(strlen(oper)==2 && oper[0]=='r' && isdigit(oper[1]) && oper[1]>='0' && oper[1]<='7'){
-                printf("*** Error in line: %d, Operator -%s- cannot use register direct addresseing as first operand ***\n",statement_cnt,OpTable[order].key);
-                *error_flag=3;
+                printf("*** Error in line: %d, Operator %s cannot use register direct addresseing as first operand ***\n",statement_cnt,OpTable[order].key);
+                *error_flag=ERROR;
                 break;
-            }
+            }               /* Mutual for cases 0,1,2,3,4 */
         case 0: case 1: case 2: case 3:
             if(oper[0]=='%'){
-                printf("*** Error in line: %d, Operator -%s- cannot use relative addresseing as first operand ***\n",statement_cnt,OpTable[order].key);
-                *error_flag=3;
+                printf("*** Error in line: %d, Operator %s cannot use relative addresseing as first operand ***\n",statement_cnt,OpTable[order].key);
+                *error_flag=ERROR;
                 break;
             }
             if(oper[0]=='#'){
                 CODE_IMAGE[IC].optype.operator.src_add=ADD_IMM;
-                CODE_IMAGE[IC+1].flag=2;
+                CODE_IMAGE[IC+1].flag=SRC_OPERAND_FLAG;
                 CODE_IMAGE[IC+1].optype.src_oper.val.sign=atoi(oper+1);
                 CODE_IMAGE[IC+1].are=0xA;
             }
             if(strlen(oper)==2 && oper[0]=='r' && isdigit(oper[1]) && oper[1]>='0' && oper[1]<='7'){
-                CODE_IMAGE[IC].optype.operator.src_add=ADD_REG;
-                CODE_IMAGE[IC+1].flag=2;
-                num=atoi(oper+1);
-                switch (num) { 
+                switch(atoi(oper+1)){ 
                     case 0: reg=R0; break;    case 1: reg=R1; break;
                     case 2: reg=R2; break;    case 3: reg=R3; break;
                     case 4: reg=R4; break;    case 5: reg=R5; break;
                     case 6: reg=R6; break;    case 7: reg=R7; break;
-                    default:      break;
-                }          
+                }
+                CODE_IMAGE[IC].optype.operator.src_add=ADD_REG;
+                CODE_IMAGE[IC+1].flag=SRC_OPERAND_FLAG;          
                 CODE_IMAGE[IC+1].optype.src_oper.val.sign=reg;
                 CODE_IMAGE[IC+1].are=0xA;
             }
-            cflag=1;
-        case 5: case 6: case 7: case 8: case 12:
-            if(distoper[0]=='#' && order!=1){
-                printf("*** Error in line: %d, Operator -%s- cannot use immediate addresseing as second operand ***\n",statement_cnt,OpTable[order].key);
-                *error_flag=3;
+            src_flag=TRUE;
+        case 5: case 6: case 7: case 8: case 12:    
+            if(distoper[0]=='#' && order!=1){       /* Mutual for cases 0,2,3,4,5,6,7,8,12 */
+                printf("*** Error in line: %d, Operator %s cannot use immediate addresseing as second operand ***\n",statement_cnt,OpTable[order].key);
+                *error_flag=ERROR;
                 break;
             }
-        case 13:
-            if(distoper[0]=='%'){
-                printf("*** Error in line: %d, Operator -%s- cannot use relative addresseing as second operand ***\n",statement_cnt,OpTable[order].key);
-                *error_flag=3;
+        case 13:                                    /* Mutual for cases 0,1,2,3,4,5,6,7,8,12,13 */
+            if(distoper[0]=='%'){                   
+                printf("*** Error in line: %d, Operator %s cannot use relative addresseing as second operand ***\n",statement_cnt,OpTable[order].key);
+                *error_flag=ERROR;
                 break;
             }
             if(strlen(distoper)==2 && distoper[0]=='r' && isdigit(distoper[1]) && distoper[1]>='0' && distoper[1]<='7'){
-                CODE_IMAGE[IC].optype.operator.dist_add=ADD_REG;
-                CODE_IMAGE[IC+cflag+1].flag=3;
-                num=atoi(distoper+1);
-                switch (num) { 
+                switch(atoi(distoper+1)){ 
                     case 0: reg=R0; break;    case 1: reg=R1; break;
                     case 2: reg=R2; break;    case 3: reg=R3; break;
                     case 4: reg=R4; break;    case 5: reg=R5; break;
                     case 6: reg=R6; break;    case 7: reg=R7; break;
-                    default:      break;
-                }          
-                CODE_IMAGE[IC+cflag+1].optype.dist_oper.val.sign=reg;
-                CODE_IMAGE[IC+cflag+1].are=0xA;
+                } 
+                CODE_IMAGE[IC].optype.operator.dist_add=ADD_REG;
+                CODE_IMAGE[IC+src_flag+1].flag=DIST_OPERAND_FLAG;         
+                CODE_IMAGE[IC+src_flag+1].optype.dist_oper.val.sign=reg;
+                CODE_IMAGE[IC+src_flag+1].are=0xA;
             }
             if(distoper[0]=='#'){
                 CODE_IMAGE[IC].optype.operator.dist_add=ADD_IMM; 
-                CODE_IMAGE[IC+cflag+1].flag=3;
-                CODE_IMAGE[IC+cflag+1].optype.dist_oper.val.sign=atoi(distoper+1);
-                CODE_IMAGE[IC+cflag+1].are=0xA;                      /*No Break here*/
+                CODE_IMAGE[IC+src_flag+1].flag=DIST_OPERAND_FLAG;
+                CODE_IMAGE[IC+src_flag+1].optype.dist_oper.val.sign=atoi(distoper+1);
+                CODE_IMAGE[IC+src_flag+1].are=0xA;
             }
-            break;
     }
-	return 0;
+    if(*error_flag==ERROR)
+        return FALSE;
+    return TRUE;
 }
 
-
 /** ------------------------------------------------------------*
- *  Implementation of first pass Function 						*
- *  Checks for Blanks & Comments & Entry to ignore, Labels to 	*
- *  add to Symbol Table, Data or Strings or Extern to Data Image* 
- *  Gives Warnings and Errors when needed and stops only after  *
- *  finishing calls other funtions to analyze statements or to 	*
- *  convert to binary on success.								*
- *  @param	statement		a statement from the file			*
+ *  After the second pass, Make binary code of the operands in  *
+ *  case of direct or relational addressing modes.              *
+ *  Gives Errors when needed and signals the error flag ERROR(3)*
+ *                                                              *
  *  @param	statement_cnt   statement counter					*
  *  @param	CODE_IMAGE		Array of structs representing orders*
  *  @param	IC				Pointer to code counter				*
- *  @param	DATA_IMAGE		Array of unions representing operand*
- *  @param	DC				Pointer to data counter				*
- *  @param 	Tlinkptr		Pointer to head of symbol table		*
+ *  @param	word		    string with assembly word           *
+ *  @param	oper			string with src operand if theres 2 *
+ *                          operands or dist operand if theres 1*
+ *  @param 	distoper		string with dist operand if theres 2*
  *  @param	error_flag		Pointer to error flag for later stop*
- *  @return TRUE(1) if change was made or else FALSE(0)			*
+ *  @return TRUE(1) if change was made, FALSE(0) if found Errors*
  *--------------------------------------------------------------*/
-int makeSecondBinary(int statement_cnt,MachineOrder CODE_IMAGE[],Operand DATA_IMAGE[], int *IC,char word[],char oper[],char distoper[],char comma[],Tlinkptr *head,Tlinkptr *xhead,int *error_flag){
+int makeSecondBinary(int statement_cnt,MachineOrder CODE_IMAGE[], int *IC,char word[],char oper[],char distoper[],Tlinkptr *head,Tlinkptr *xhead,int *error_flag){
     int order,cflag=0;
     Tlinkptr runner=NULL;
-    
-    /*  making sure srcoper and distoper have the needed values if needed*/
-    if(oper[strlen(oper)-1]==',')
-        oper[strlen(oper)-1]='\0';
-    if(distoper[0]==',')
-        distoper=distoper+1;
-    if(strcmp(distoper,"\0")==0)
-        distoper=comma;
-    if(distoper[0]==',')
-        distoper=distoper+1;
-    if(strcmp(distoper,"\0")==0)
-        distoper=oper;
-    
-    /*printf("%d \n",*IC);
-      getting command from table */
+        
+    /* getting command from table */
     order=isOperatorLegal(word);
     switch(order){
         case 0: case 1: case 2: case 3: case 4:

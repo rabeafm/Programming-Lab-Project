@@ -1,12 +1,12 @@
 #ifndef _UTILS_
 #define _UTILS_
 
+#define MAX_RESERVED_WORDS 28 
+#define NUMBER_OF_ORDERS 16
 #define FALSE 0
 #define TRUE 1
 #define UPDATE 2
 #define ERROR 3
-#define NUMBER_OF_ORDERS 16
-#define MAX_RESERVED_WORDS 28 
 
 int isStatementLegal(int,char *,char *,char *,char *,int *);
 int isLabelLegal(int, char *);

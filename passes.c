@@ -5,7 +5,6 @@
 #include "symbtab.h"
 #include "utils.h"
 
-
 /** ------------------------------------------------------------*
  *  Implementation of first pass Function 						*
  *  Checks for Blanks & Comments & Entry to ignore, Labels to 	*
@@ -178,9 +177,22 @@ int secondPass(char *statement,int statement_cnt,int *IC,int *DC,Tlinkptr *head,
 	   and if not in table give error.
 	   if has external attribute add infoword address tolist of externals 
 	   i can use IC and L .*/
-	if(*error_flag!=3) 
-		makeSecondBinary(statement_cnt,CODE_IMAGE,DATA_IMAGE,IC,word,srcoper,distoper,comma,head,xhead,error_flag);
-	
+		
+	if(*error_flag!=3) {
+		 /*  making sure srcoper and distoper have the needed values if needed*/
+    	if(srcoper[strlen(srcoper)-1]==',')
+			srcoper[strlen(srcoper)-1]='\0';
+    	if(distoper[0]==',')
+			strcpy(distoper,distoper+1);
+    	if(strcmp(distoper,"\0")==0)
+			strcpy(distoper,comma);
+    	if(distoper[0]==',')
+			strcpy(distoper,distoper+1);
+    	if(strcmp(distoper,"\0")==0){
+        	strcpy(distoper,srcoper);
+		}
+		makeSecondBinary(statement_cnt,CODE_IMAGE,IC,word,srcoper,distoper,head,xhead,error_flag);
+	}
 
 	
 	return 1;
