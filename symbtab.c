@@ -4,9 +4,146 @@
 #include "symbtab.h"
 #include "utils.h"
 
+/** ------------------------------------------------------------*
+ *  Recieves a label, checks if legal and adds to symbol table.	*
+ *  															*
+ *  @param	statement_cnt   statement counter					*
+ *  @param	label			label								*
+ *  @param	DC				Pointer to data counter				*
+ *  @param	word			Symbol type defining word 			*
+ *  @param 	head			Pointer to head of symbol table		*
+ *  @param	error_flag		Pointer to error flag for later stop*
+ *  @return TRUE(1) if label was added or else FALSE(0)			*
+ *--------------------------------------------------------------*/
+int addSymbol(int statement_cnt,char *label, int *DC, char *word, Tlinkptr *head, int *error_flag){
+	Tlinkptr runner = *head;
+	int label_len = strlen(label);
+
+	/* Fixes Label end */
+	if(label[label_len-1]==':') {
+		label[label_len-1]='\0';
+		label_len--;
+	}
+
+	/* Checks if Label is legal */
+	if(!isLabelLegal(statement_cnt,label)){
+		(*error_flag)=ERROR;
+		return FALSE;
+	}	
+	
+	/* if Table is empty add label to head */
+	if(!(*head)){
+		*head = (Tlinkptr) malloc(sizeof(Tlink));
+		strcpy((**head).symbol,label); 			/* add label to symbol table */
+		if(isData(word) || isString(word)){	/* if data with value DC and attribute data */
+			(**head).value=(*DC);
+			(**head).is_data=TRUE; 
+		}
+		if(isExtern(word)){			/* if extern with value DC and attribute extern */
+			(**head).value=0;
+			(**head).is_extern=TRUE;
+		}
+		if(!strcmp(word,"code")){		/* if code with value DC and attribute code */
+			(**head).value=(*DC);
+			(**head).is_code=TRUE; 
+		}
+		return TRUE;
+	}
+	if(strcmp((*runner).symbol,label)==0 && !isExtern(word)){
+		printf("*** Error in line: %d, Symbol %s is already in symbol table *** \n",statement_cnt,label);
+		(*error_flag)=ERROR;
+		return FALSE;
+	}
+	while((*runner).next){
+		runner = (*runner).next;
+		if(strcmp((*runner).symbol,label)==0){
+			printf("*** Error in line: %d, Symbol %s is already in symbol table",statement_cnt,label);
+			(*error_flag)=ERROR;
+			if(isExtern(word) && (*runner).is_extern==FALSE)	/* if symbol in list without external attribute report error */
+				printf(", and doesnt have attribute external");
+			printf(" *** \n");
+			return FALSE;
+		}
+	}
+	(*runner).next = (Tlinkptr) malloc(sizeof(Tlink));
+	strcpy((*((*runner).next)).symbol,label);		/* add label to symbol table */
+	if(isData(word) || isString(word)){			/* if data with value DC and attribute data */
+		(*((*runner).next)).value=(*DC);
+		(*((*runner).next)).is_data=TRUE; 
+	}
+	if(isExtern(word)){						/* if extern with value DC and attribute extern */
+		(*((*runner).next)).value=0;
+		(*((*runner).next)).is_extern=TRUE;
+	}
+	if(!strcmp(word,"code")){			/* if code with value DC and attribute code */
+		(*((*runner).next)).value=(*DC);
+		(*((*runner).next)).is_code=TRUE; 
+	}
+	return TRUE;	
+}
+
+/** ------------------------------------------------------------*
+ *  Recieves a pointer to a link in a linked list and frees 	*
+ *  allocated memory for it and all following links.			*
+ *  															*
+ *  @param 	runner			Pointer to head of symbol table		*
+ *--------------------------------------------------------------*/
+void freeTable(Tlinkptr runner){
+	Tlinkptr tmp;
+	while (runner){
+       tmp = runner;
+       runner = runner->next;
+       free(tmp);
+    }
+}
+
+/** ------------------------------------------------------------*
+ *  Recieves a label and a pointer to a link in a linked list  	*
+ *  and returns pointer to the link with the label name or NULL.*
+ *  															*
+ *  @param	label			label								*
+ *  @param 	head			Pointer to head of symbol table		*
+ *  @return pointer to link if found or NULL					*
+ *--------------------------------------------------------------*/
+Tlinkptr getSymbol(char label[],Tlinkptr *head){
+	Tlinkptr runner = *head;
+	while(runner){
+		if(strcmp((*runner).symbol,label)==0)
+			return runner;
+		runner = (*runner).next;
+	}
+	return NULL;
+}
+
+/** ------------------------------------------------------------*
+ *  Recieves code final count and updates data labels values 	*
+ *  															*
+ *  @param 	ICF				Machine Code Counter				*
+ *  @param 	head			Pointer to head of symbol table		*
+ *--------------------------------------------------------------*/
+void updateDataSymbols(int ICF,Tlinkptr *head){
+	Tlinkptr runner = *head;
+	while(runner){
+		if((*runner).is_data==1)
+			(*runner).value+=ICF;
+		runner = (*runner).next;
+	}
+}
+
+/** ------------------------------------------------------------*
+ *  Recieves an extern label and extern table head, and adds to *
+ *  Extern Table.												*
+ *  															*
+ *  @param	label			label								*
+ *  @param	DC				Data counter value					*
+ *  @param 	head			Pointer to head of extern table		*
+ *  @param	error_flag		Pointer to error flag for later stop*
+ *  @return TRUE(1) 											*
+ *--------------------------------------------------------------*/
 int addExternSymbol(char *label, int DC, Tlinkptr *head, int *error_flag){
 	Tlinkptr runner = *head;
 
+	/* Fixes Label end */
 	int label_len = strlen(label);
 	if(label[label_len-1]==':') {
 		label[label_len-1]='\0';
@@ -18,9 +155,8 @@ int addExternSymbol(char *label, int DC, Tlinkptr *head, int *error_flag){
 		*head = (Tlinkptr) malloc(sizeof(Tlink));
 		strcpy((**head).symbol,label);
 		(**head).value=DC;
-		(**head).is_extern=1;
-		printf("Added to Extern table: %s code: %d data: %d extern: %d value: %d \n",(*head)->symbol,(*head)->is_code,(*head)->is_data,(*head)->is_extern, (*head)->value);
-		return 1;
+		(**head).is_extern=TRUE;
+		return TRUE;
 	}
 	while((*runner).next){
 		runner = (*runner).next;
@@ -28,118 +164,19 @@ int addExternSymbol(char *label, int DC, Tlinkptr *head, int *error_flag){
 	(*runner).next = (Tlinkptr) malloc(sizeof(Tlink));
 	strcpy((*((*runner).next)).symbol,label);
 	(*((*runner).next)).value=DC;
-	(*((*runner).next)).is_extern=1;
-	printf("Added to Extern table: %s code: %d data: %d extern: %d value: %d \n",((*runner).next)->symbol,((*runner).next)->is_code,((*runner).next)->is_data,((*runner).next)->is_extern, ((*runner).next)->value);
-	return 1;	
+	(*((*runner).next)).is_extern=TRUE;
+	return TRUE;	
 }
 
-int add_symbol(int statement_cnt,char *label, int *DC, char *word, Tlinkptr *head, int *error_flag){
-	Tlinkptr runner = *head;
-	int label_len = strlen(label);
-	if(label[label_len-1]==':') {
-		label[label_len-1]='\0';
-		label_len--;
-	}
-
-	if(!isLabelLegal(statement_cnt,label)){
-		(*error_flag)=3;
-		return 0;
-	}
-		
-	
-	/* if Table is empty add label to head */
-	if(!(*head)){
-		*head = (Tlinkptr) malloc(sizeof(Tlink));
-		strcpy((**head).symbol,label);
-		if(!strcmp(word,".data") || !strcmp(word,".string")){/*  add operand symbol to symbol table with value DC and attribute data*/
-			(**head).value=(*DC);
-			(**head).is_data=1; 
-		}
-		if(!strcmp(word,".extern")){/*  add operand symbol to symbol table with value 0 and attribute external*/
-			(**head).value=0;
-			(**head).is_extern=1;
-		}
-		if(!strcmp(word,"code")){
-			(**head).value=(*DC);
-			(**head).is_code=1; 
-		}
-		printf("Added to symbol table: %s code: %d data: %d extern: %d value: %d \n",(*head)->symbol,(*head)->is_code,(*head)->is_data,(*head)->is_extern, (*head)->value);
-		return 1;
-	}
-	if(strcmp((*runner).symbol,label)==0){
-		printf("\t\t\t\t\t\t\t Symbol %s is already in symbol table", label);
-		(*error_flag)=3;
-		if(!strcmp(word,".extern") && (*runner).is_extern==0)
-			printf(", and doesnt have attribute external");
-		printf("\n");
-		/* if symbol in list without external attribute report error */
-		return 0;
-	}
-	while((*runner).next){
-		runner = (*runner).next;
-		if(strcmp((*runner).symbol,label)==0){
-			printf("\t\t\t\t\t\t\t Symbol %s is already in symbol table", label);
-			(*error_flag)=3;
-			if(!strcmp(word,".extern") && (*runner).is_extern==0)
-			printf(", and doesnt have attribute external");
-			printf("\n");
-			return 0;
-		}
-	}
-	(*runner).next = (Tlinkptr) malloc(sizeof(Tlink));
-	strcpy((*((*runner).next)).symbol,label);
-	if(!strcmp(word,".data") || !strcmp(word,".string")){
-		(*((*runner).next)).value=(*DC);
-		(*((*runner).next)).is_data=1; 
-	}
-	if(!strcmp(word,".extern")){
-		(*((*runner).next)).value=0;
-		(*((*runner).next)).is_extern=1;
-	}
-	if(!strcmp(word,"code")){
-		(*((*runner).next)).value=(*DC);
-		(*((*runner).next)).is_code=1; 
-	}
-	printf("Added to symbol table: %s code: %d data: %d extern: %d value: %d \n",((*runner).next)->symbol,((*runner).next)->is_code,((*runner).next)->is_data,((*runner).next)->is_extern, ((*runner).next)->value);
-	return 1;	
-}
-
-
-Tlinkptr get_symbol(char symbol[],Tlinkptr *head){
-	Tlinkptr runner = *head;
-	while(runner){
-		if(strcmp((*runner).symbol,symbol)==0)
-			return runner;
-		runner = (*runner).next;
-	}
-	return NULL;
-
-}
-
-
-/*	Updating final counters and Symbol Table links using +ICF */
-void updateDataSymbols(int ICF,Tlinkptr *head){
-	Tlinkptr runner = *head;
-	while(runner){
-		if((*runner).is_data==1)
-			(*runner).value+=ICF;
-		runner = (*runner).next;
-	}
-}
-
+/** ------------------------------------------------------------*
+ *  Recieves a pointer to a link (Tlink) in a linked list and 	*
+ *  printsit and all following links (Used in development).		*
+ *  															*
+ *  @param 	r			Pointer to head of symbol table			*
+ *--------------------------------------------------------------*/
 void printTable(Tlinkptr r){
 	if(r){
 		printf("Symbol: %s Value: %d Code: %d Data: %d entry: %d extern: %d Next: %s \n",(*r).symbol,(*r).value,(*r).is_code,(*r).is_data,(*r).is_entry,(*r).is_extern,(*((*r).next)).symbol);
 		printTable(r->next);
 	}
 }
-
-void freeTable(Tlinkptr runner){
-	Tlinkptr tmp;
-	while (runner){
-       tmp = runner;
-       runner = runner->next;
-       free(tmp);
-    }
-}
-

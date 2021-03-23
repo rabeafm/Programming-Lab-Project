@@ -38,7 +38,7 @@ typedef struct machineorder {		/* Machine Order - can be operator/operand/infowo
 	unsigned int flag: 2;		 /* a flag to define if its Operator/SrcOper/DistOper/Information */
 } MachineOrder;
 
-typedef struct operatordict {
+typedef struct operatordict {	/* used for creating the binary OpTable(Dictionary) for data filling by index */
 	char key[5];
 	unsigned int funct: 4;
 	unsigned int opcode: 4;

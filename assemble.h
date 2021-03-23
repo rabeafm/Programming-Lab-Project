@@ -23,8 +23,8 @@ int readFile(char *);
 int writeFiles(char *);
 
 /*  passes.c Functions   */
-int firstPass(char *,int,MachineOrder [],int *,Operand [],int *,Tlinkptr *,int *);
-int secondPass(char *,int,int *,int *,Tlinkptr *,Operand [],MachineOrder [],Tlinkptr *,int *);
+int firstPass(char *,int, MachineOrder [], int *, Operand [], int *, Tlinkptr *,int *);
+int secondPass(char *,int, MachineOrder [], int *, Operand [], int *, Tlinkptr *, Tlinkptr *, int *);
 
 /*  binary.c Functions   */
 

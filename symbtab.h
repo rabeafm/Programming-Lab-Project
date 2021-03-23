@@ -1,11 +1,21 @@
 #ifndef _SYMBTAB_
 #define _SYMBTAB_
 
-/* pointer to table link */
+/*--------------------------------------------------------------*
+ *		 Table link pointer / Table link / Table list		   	*
+ * Table list - used for symbol (Label) table and extern table. *
+ * Table link - holds the values for every symbol (Label).		*
+ * Table link pointer - points to a Table link					*
+ * Used in: symbtab.c											*
+ *--------------------------------------------------------------*/
+
 typedef struct tlink *Tlinkptr;
 
-typedef struct tlink
-{
+typedef struct {
+	Tlinkptr head;
+} Tablelist;
+
+typedef struct tlink {
 	char symbol[32];
 	unsigned int value : 28;
 	unsigned int is_code : 1;
@@ -15,17 +25,14 @@ typedef struct tlink
 	Tlinkptr next;
 } Tlink;
 
-typedef struct {
-	Tlinkptr head;
-} Tlist;
-
+/*	Symbol Table Functions */
+int addSymbol(int,char *,int *,char *, Tlinkptr *, int *);
+void freeTable(Tlinkptr);
+Tlinkptr getSymbol(char *,Tlinkptr *);
 void updateDataSymbols(int ,Tlinkptr *);
 int addExternSymbol(char *,int ,Tlinkptr *, int *);
 
-int add_symbol(int,char *,int *,char *, Tlinkptr *, int *);
-
-Tlinkptr get_symbol(char *,Tlinkptr *);
+/*	not used in running but used for writing program  */
 void printTable(Tlinkptr);
-void freeTable(Tlinkptr);
 
 #endif

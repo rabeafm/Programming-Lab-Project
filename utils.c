@@ -3,6 +3,7 @@
 #include <ctype.h>
 #include "utils.h"
 
+/***************** A list of reserved words ********************/
 char *RESERVED_WORDS[] = {
 	"mov", "cmp", "add", "sub", "lea", "clr", "not", "inc",
 	"dec", "jmp", "bne", "jsr",	"red", "prn", "rts", "stop",
@@ -10,29 +11,45 @@ char *RESERVED_WORDS[] = {
 	".data",".string",".entry",".extern"
 };
 
+/** ------------------------------------------------------------*
+ *  Recieves an order statement split to its components and a   * 
+ *  statement count and an error flag checks if the statement   *
+ *  structure is legal (Report Errors).                         *
+ *                                                              *
+ *  @param statement_cnt statements count						*
+ *  @param word 		 operator          						*
+ *  @param srcoper 		 source operand          				*
+ *  @param distoper 	 destination operand          			*
+ *  @param comma 		 destination operand if comma has spaces*
+ *                       from both sides          				*
+ *  @param	error_flag		Pointer to error flag for later stop*
+ *  @return Number of elements in statement (number of machine  *
+ *          orders needed) or else FALSE(0)		                *
+ *--------------------------------------------------------------*/
 int isStatementLegal(int statement_cnt,char *word,char *srcoper,char *distoper,char *comma,int *error_flag){
-    int commacnt=0;
-    char *fix;
+    int commacnt=0;     /* Comma counter */
+    char *fix;          /* used for string fixes */
+
     switch(isOperatorLegal(word)){
-        case 14: case 15:
+        case 14: case 15:       
             if(strcmp(srcoper,"\0")!=0 || strcmp(distoper,"\0")!=0 || strcmp(comma,"\0")!=0 ){
                 printf("*** Error in line: %d, order %s doesn't recieve operands ***\n",statement_cnt,word);
-                *error_flag=3;
-                return 0;
+                *error_flag=ERROR;
+                return FALSE;
             }
-            return 1;
+            return 1;           /* only an operator */
         case 5: case 6: case 7: case 8: case 9: 
         case 10: case 11: case 12: case 13:
             if(strcmp(distoper,"\0")!=0 || strcmp(comma,"\0")!=0){
                 printf("*** Error in line: %d, order %s recieves only one operand ***\n",statement_cnt,word);
-                *error_flag=3;
-                return 0;
+                *error_flag=ERROR;
+                return FALSE;
             }
             if(!isOperandLegal(statement_cnt,srcoper,strlen(srcoper)-1)){
-                *error_flag=3;
-                return 0;
+                *error_flag=ERROR;
+                return FALSE;
             }
-            return 2;
+            return 2;           /* an operator and an operand */
         case 0: case 1: case 2: case 3: case 4:
             if(strcmp(srcoper,"\0")==0 || strcmp(distoper,"\0")==0 || (strcmp(comma,"\0")==0 && distoper[0]==',' && strlen(comma)==1 )){
                 fix=strchr(srcoper,',');
@@ -41,57 +58,64 @@ int isStatementLegal(int statement_cnt,char *word,char *srcoper,char *distoper,c
                     *(fix+1)='\0';
                 } else {
                     printf("*** Error in line: %d, order %s recieves 2 operands split by comma, one or more operands are missing ***\n",statement_cnt,word);
-                    *error_flag=3;
-                    return 0;
+                    *error_flag=ERROR;
+                    return FALSE;
                 }
             }
             if(srcoper[strlen(srcoper)-1]==','){
                 commacnt++;
                 if(!isOperandLegal(statement_cnt,srcoper,strlen(srcoper)-2)){
-                    *error_flag=3;
-                    return 0;
+                    *error_flag=ERROR;
+                    return FALSE;
                 }
             } else {
                 if(!isOperandLegal(statement_cnt,srcoper,strlen(srcoper)-1)){
-                    *error_flag=3;
-                    return 0;
+                    *error_flag=ERROR;
+                    return FALSE;
                 }
             }
             if(distoper[0]==','){
                 commacnt++;
                 if(strlen(distoper)>1){
                     if(!isOperandLegal(statement_cnt,distoper+1,strlen(distoper)-1)){
-                        *error_flag=3;
-                        return 0;
+                        *error_flag=ERROR;
+                        return FALSE;
                     }
                 } else {
                     if(!isOperandLegal(statement_cnt,comma,strlen(comma)-1)){
-                        *error_flag=3;
-                        return 0;
+                        *error_flag=ERROR;
+                        return FALSE;
                     }
                 }
             } else {
                 if(!isOperandLegal(statement_cnt,distoper,strlen(distoper)-1)){
-                    *error_flag=3;
-                    return 0;
+                    *error_flag=ERROR;
+                    return FALSE;
                 }
                 if(strcmp(comma,"\0")!=0){
                     printf("*** Error in line: %d, too many operands ***\n",statement_cnt);
-                    *error_flag=3;
-                    return 0;
+                    *error_flag=ERROR;
+                    return FALSE;
                 }
             }
             if(commacnt>1 || commacnt==0){
                 printf("*** Error in line: %d, too many commas between operands ***\n",statement_cnt);
-                *error_flag=3;
-                return 0;
+                *error_flag=ERROR;
+                return FALSE;
             }    
-            return 3;
+            return 3;           /* an operator and two operands */
     }
-   return 0;
+   return FALSE;
 }
 
-/* if symbol is not legal label report error */
+/** ------------------------------------------------------------*
+ *  Recieves a statements count and a label string checks if the*
+ *  label (Report Errors).                                     	*
+ *                                                              *
+ *  @param statement_cnt statements count						*
+ *  @param label 		 label          						*
+ *  @return TRUE(1) if string is legal or else FALSE(0)			*
+ *--------------------------------------------------------------*/
 int isLabelLegal(int statement_cnt, char *label){
 	int i=1;
 	if(!isalpha(label[0])){
@@ -119,6 +143,7 @@ int isLabelLegal(int statement_cnt, char *label){
 /** ------------------------------------------------------------*
  *  Recieves a word, checks if it exists in assembly language   *
  *  dictionary, and returns its number in the OpTable     		*
+ *                                                              *
  *  @param word 		word									*
  *  @return Index in OpTable Dictionary or else -1				*
  *--------------------------------------------------------------*/
@@ -132,7 +157,8 @@ int isOperatorLegal(char word[]){
 
 /** ------------------------------------------------------------*
  *  Recieves a statements count, an operand string and strings  *
- *  length, checks if the operand is legal.                 	*
+ *  length, checks if the operand is legal (Report Errors)     	*
+ *                                                              *
  *  @param statement_cnt statements count						*
  *  @param operand 		 operand        						*
  *  @param length	 	 operand length							*
@@ -160,7 +186,9 @@ int isOperandLegal(int statement_cnt, char *operand,int length){
 
 /** ------------------------------------------------------------*
  *  Recieves a statements count, a string of numbers split with	*
- *  ,	and strings length checks if string of number is legal.	*
+ *  , and strings length checks if string of number is legal    *
+ * (Report Errors).                                         	*
+ *                                                              *
  *  @param statement_cnt statements count						*
  *  @param nums 		 string of numbers						*
  *  @param length	 	 strings length							*
@@ -191,7 +219,8 @@ int isDataLegal(int statement_cnt, char *nums,int length){
 
 /** ------------------------------------------------------------*
  *  Recieves a statements count, a string of operand/operands	*
- *  checks if string is legal.									*
+ *  checks if string is legal (Report Errors).					*
+ *                                                              *
  *  @param statement_cnt statements count						*
  *  @param operands 	 string                 				*
  *  @return TRUE(1) if string is legal or else FALSE(0)			*
@@ -227,7 +256,8 @@ int isStringLegal(int statement_cnt, char *operands){
 }
 
 /** ------------------------------------------------------------*
- *  Recieves a statement/word, checks if blank.					*
+ *  Recieves a statement, checks if is blank.				    *
+ *                                                              *
  *  @param word 		word or statement						*
  *  @return TRUE(1) if blank or else FALSE(0)					*
  *--------------------------------------------------------------*/
@@ -238,7 +268,8 @@ int isBlank(char *word){
 }
 
 /** ------------------------------------------------------------*
- *  Recieves a statement/word, checks if comment (starts with ;)*
+ *  Recieves a statement, checks if is a comment (starts with ;)*
+ *                                                              *
  *  @param word 		word or statement						*
  *  @return TRUE(1) if comment or else FALSE(0)					*
  *--------------------------------------------------------------*/
@@ -249,7 +280,8 @@ int isComment(char *word){
 }
 
 /** ------------------------------------------------------------*
- *  Recieves a word, checks if label (ends with :)				*
+ *  Recieves a word, checks if is label (ends with :)			*
+ *                                                              *
  *  @param word 		word									*
  *  @return TRUE(1) if label or else FALSE(0)					*
  *--------------------------------------------------------------*/
@@ -260,7 +292,8 @@ int isLabel(char *word){
 }
 
 /** ------------------------------------------------------------*
- *  Recieves a word, checks if data (has ".data")				*
+ *  Recieves a word, checks if is data (has ".data")			*
+ *                                                              *
  *  @param word 		word									*
  *  @return TRUE(1) if data or else FALSE(0)					*
  *--------------------------------------------------------------*/
@@ -271,7 +304,8 @@ int isData(char *word){
 }
 
 /** ------------------------------------------------------------*
- *  Recieves a word, checks if string (has ".string")			*
+ *  Recieves a word, checks if is string (has ".string")		*
+ *                                                              *
  *  @param word 		word									*
  *  @return TRUE(1) if string or else FALSE(0)					*
  *--------------------------------------------------------------*/
@@ -282,7 +316,8 @@ int isString(char *word){
 }
 
 /** ------------------------------------------------------------*
- *  Recieves a word, checks if entry (has ".entry")				*
+ *  Recieves a word, checks if is entry (has ".entry")			*
+ *                                                              *
  *  @param word 		word									*
  *  @return TRUE(1) if entry or else FALSE(0)					*
  *--------------------------------------------------------------*/
@@ -293,7 +328,8 @@ int isEntry(char *word){
 }
 
 /** ------------------------------------------------------------*
- *  Recieves a word, checks if extern (has ".extern")			*
+ *  Recieves a word, checks if is extern (has ".extern")		*
+ *                                                              *
  *  @param word 		word									*
  *  @return TRUE(1) if extern or else FALSE(0)					*
  *--------------------------------------------------------------*/
@@ -302,4 +338,3 @@ int isExtern(char *word){
 		return TRUE;
 	return FALSE;
 }
-

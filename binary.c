@@ -256,7 +256,7 @@ int makeSecondBinary(int statement_cnt,MachineOrder CODE_IMAGE[], int *IC,char w
     switch(order){
         case 0: case 1: case 2: case 3: case 4:     /* label case with direct addressing for source operand */
             if(!((strlen(oper)==2 && oper[0]=='r' && isdigit(oper[1]) && oper[1]>='0' && oper[1]<='7') || oper[0]=='#' || oper[0]=='%')){
-                link = get_symbol(oper,head);                
+                link = getSymbol(oper,head);                
                 if(link){
                     CODE_IMAGE[(*IC)].optype.operator.src_add=ADD_DIR;
                     CODE_IMAGE[(*IC)+1].flag=SRC_OPERAND_FLAG;          
@@ -276,7 +276,7 @@ int makeSecondBinary(int statement_cnt,MachineOrder CODE_IMAGE[], int *IC,char w
         case 5: case 6: case 7: case 8: case 9:
         case 10: case 11: case 12: case 13:         /* label case with direct addressing for destination operand */
             if(!((strlen(distoper)==2 && distoper[0]=='r' && isdigit(distoper[1]) && distoper[1]>='0' && distoper[1]<='7') || distoper[0]=='#' || distoper[0]=='%')){
-                link = get_symbol(distoper,head);                
+                link = getSymbol(distoper,head);                
                 if(link){
                     CODE_IMAGE[(*IC)].optype.operator.dist_add=ADD_DIR;
                     CODE_IMAGE[(*IC)+operand_cnt+1].flag=DIST_OPERAND_FLAG;          
@@ -292,8 +292,8 @@ int makeSecondBinary(int statement_cnt,MachineOrder CODE_IMAGE[], int *IC,char w
                 }
             }
             if((distoper[0]=='%') && (order==9 || order==10 || order==11)){  /* label case with relative addressing for destination operand */
-                link = get_symbol(distoper+1,head);                
-                if(link){
+                link = getSymbol(distoper+1,head);                
+                if(link && (*link).is_extern==FALSE){
                     CODE_IMAGE[(*IC)].optype.operator.dist_add=ADD_REL;
                     CODE_IMAGE[(*IC)+1].flag=DIST_OPERAND_FLAG;          
                     CODE_IMAGE[(*IC)+1].optype.dist_oper.val.sign=(*link).value-((*IC)+101);

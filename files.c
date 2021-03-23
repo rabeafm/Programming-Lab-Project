@@ -14,8 +14,8 @@
  *--------------------------------------------------------------*/
 MachineOrder CODE_IMAGE[MAX_MACHINE_ORDERS];
 Operand DATA_IMAGE[MAX_DATA_ORDERS];
-Tlist SYMB_TABLE;
-Tlist EXTERN_TABLE;
+Tablelist SYMB_TABLE;
+Tablelist EXTERN_TABLE;
 static int ICF,DCF;
 
 /** ------------------------------------------------------------*
@@ -73,7 +73,7 @@ int readFile(char *file){
 	/****************** Second Pass *****************/
 	while(fgets(statement,MAX_STATEMENT_LENGTH,fd)){
 		statement_cnt++;
-		secondPass(statement,statement_cnt,&IC,&DC,&(SYMB_TABLE.head),DATA_IMAGE,CODE_IMAGE,&(EXTERN_TABLE.head),&error_flag);
+		secondPass(statement,statement_cnt,CODE_IMAGE,&IC,DATA_IMAGE,&DC,&(SYMB_TABLE.head),&(EXTERN_TABLE.head),&error_flag);
 	}
 	fclose(fd);
 

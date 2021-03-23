@@ -5,7 +5,7 @@
  * Orders Opcodes / Functs / Address Modes / Registers Dictionary *
  * Operator Dictionary is used to hold in the data related to its *
  * translation to binary code.									  *
- * Used Mainly in: binary.c										  *
+ * Used in: binary.c										  *
  *----------------------------------------------------------------*/
 
 typedef enum {								
