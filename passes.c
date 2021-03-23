@@ -132,7 +132,7 @@ int firstPass(char *statement,int statement_cnt,MachineOrder CODE_IMAGE[],int *I
  *  @param	error_flag		Pointer to error flag for later stop*
  *  @return TRUE(1) if change was made or else FALSE(0)			*
  *--------------------------------------------------------------*/
-int secondPass(char *statement,int statement_cnt,int *IC,int *DC,Tlinkptr *head,Operand DATA_IMAGE[],MachineOrder CODE_IMAGE[],Tlinkptr *xhead,int *error_flag){
+int secondPass(char *statement,int statement_cnt,int *IC,int *DC,Tlinkptr *head,Operand DATA_IMAGE[],MachineOrder CODE_IMAGE[],Tlinkptr *extern_head,int *error_flag){
 	char word[32]="\0",srcoper[32]="\0",distoper[32]="\0",comma[32]="\0";
 	Tlinkptr runner;
 	
@@ -148,11 +148,7 @@ int secondPass(char *statement,int statement_cnt,int *IC,int *DC,Tlinkptr *head,
 	}
 	
 	/* if data / string / extern ignore */
-	if(isData(word) || isString(word)){
-		return FALSE;
-	}
-
-	if(isExtern(word)){
+	if(isData(word) || isString(word) || isExtern(word)){
 		return FALSE;
 	}
 
@@ -191,7 +187,7 @@ int secondPass(char *statement,int statement_cnt,int *IC,int *DC,Tlinkptr *head,
     	if(strcmp(distoper,"\0")==0){
         	strcpy(distoper,srcoper);
 		}
-		makeSecondBinary(statement_cnt,CODE_IMAGE,IC,word,srcoper,distoper,head,xhead,error_flag);
+		makeSecondBinary(statement_cnt,CODE_IMAGE,IC,word,srcoper,distoper,head,extern_head,error_flag);
 	}
 
 	

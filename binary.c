@@ -8,8 +8,8 @@
 #include <ctype.h>
 #include "assemble.h"
 #include "data.h"
-#include "utils.h"
 #include "symbtab.h"
+#include "utils.h"
 #include "values.h"
 
 /** ------------------------------------------------------------*
@@ -145,11 +145,12 @@ int makeFirstBinary(int statement_cnt, MachineOrder CODE_IMAGE[], int IC,char wo
     int order,reg,src_flag=FALSE;       /* reg is used for passing the register code*/
                                         /* src_flag used for correcting next line for dist operand if operator recieves 2 operands*/
     IC-=CODE_BEGIN;
+    
     /* getting order number from table */
     order=isOperatorLegal(word);
     /* Filling Data for All */
     CODE_IMAGE[IC].flag=OPERATOR_FLAG;
-    CODE_IMAGE[IC].are=0xA;
+    CODE_IMAGE[IC].are=0xA;         /* Using Hexa for are A=Absolute C=Relocatble E=External */
     CODE_IMAGE[IC].optype.operator.opcode=OpTable[order].opcode;
     CODE_IMAGE[IC].optype.operator.funct=OpTable[order].funct;
     CODE_IMAGE[IC].optype.operator.dist_add=NO_ADD;
@@ -228,6 +229,7 @@ int makeFirstBinary(int statement_cnt, MachineOrder CODE_IMAGE[], int IC,char wo
     return TRUE;
 }
 
+/******************** second pass functions *********************/
 /** ------------------------------------------------------------*
  *  After the second pass, Make binary code of the operands in  *
  *  case of direct or relational addressing modes.              *
@@ -240,79 +242,92 @@ int makeFirstBinary(int statement_cnt, MachineOrder CODE_IMAGE[], int IC,char wo
  *  @param	oper			string with src operand if theres 2 *
  *                          operands or dist operand if theres 1*
  *  @param 	distoper		string with dist operand if theres 2*
+ *  @param  head            head of symbols table (linkedlist)  *
+ *  @param  extern_head     head of externs table (linkedlist)  *
  *  @param	error_flag		Pointer to error flag for later stop*
  *  @return TRUE(1) if change was made, FALSE(0) if found Errors*
  *--------------------------------------------------------------*/
-int makeSecondBinary(int statement_cnt,MachineOrder CODE_IMAGE[], int *IC,char word[],char oper[],char distoper[],Tlinkptr *head,Tlinkptr *xhead,int *error_flag){
-    int order,cflag=0;
-    Tlinkptr runner=NULL;
+int makeSecondBinary(int statement_cnt,MachineOrder CODE_IMAGE[], int *IC,char word[],char oper[],char distoper[],Tlinkptr *head,Tlinkptr *extern_head,int *error_flag){
+    int order,operand_cnt=0;    /* Operand Count */
+    Tlinkptr link;              /* a link in the symbols linked list */
         
     /* getting command from table */
     order=isOperatorLegal(word);
     switch(order){
-        case 0: case 1: case 2: case 3: case 4:
+        case 0: case 1: case 2: case 3: case 4:     /* label case with direct addressing for source operand */
             if(!((strlen(oper)==2 && oper[0]=='r' && isdigit(oper[1]) && oper[1]>='0' && oper[1]<='7') || oper[0]=='#' || oper[0]=='%')){
-                runner = get_symbol(oper,head);                
-                if(runner){
+                link = get_symbol(oper,head);                
+                if(link){
                     CODE_IMAGE[(*IC)].optype.operator.src_add=ADD_DIR;
-                    CODE_IMAGE[(*IC)+1].flag=2;          
-                    CODE_IMAGE[(*IC)+1].optype.src_oper.val.sign=(*runner).value;
-                    if ((*runner).is_extern){
-                        addExternSymbol(oper,(*IC)+1,xhead,error_flag);
-                        CODE_IMAGE[(*IC)+1].are=0xE;
+                    CODE_IMAGE[(*IC)+1].flag=SRC_OPERAND_FLAG;          
+                    CODE_IMAGE[(*IC)+1].optype.src_oper.val.unsign=(*link).value;
+                    if ((*link).is_extern){
+                        addExternSymbol(oper,(*IC)+1,extern_head,error_flag);   /* add to external table */
+                        CODE_IMAGE[(*IC)+1].are=0xE;    /*External */
                     }
                     else
-                        CODE_IMAGE[(*IC)+1].are=0xC;
+                        CODE_IMAGE[(*IC)+1].are=0xC;    /*Relocatble */
                 } else {
-                    printf("*** Error in line: %d, Symbol %s given as first operand wasnt found in symbol table ***\n",statement_cnt,oper);
-                    *error_flag=3;
+                    printf("*** Error in line: %d, Symbol %s given as first operand wasn't found in symbol table ***\n",statement_cnt,oper);
+                    *error_flag=ERROR;
                 }
             }
-            cflag++;
+            operand_cnt++;
         case 5: case 6: case 7: case 8: case 9:
-        case 10: case 11: case 12: case 13:
+        case 10: case 11: case 12: case 13:         /* label case with direct addressing for destination operand */
             if(!((strlen(distoper)==2 && distoper[0]=='r' && isdigit(distoper[1]) && distoper[1]>='0' && distoper[1]<='7') || distoper[0]=='#' || distoper[0]=='%')){
-                runner = get_symbol(distoper,head);                
-                if(runner){
+                link = get_symbol(distoper,head);                
+                if(link){
                     CODE_IMAGE[(*IC)].optype.operator.dist_add=ADD_DIR;
-                    CODE_IMAGE[(*IC)+cflag+1].flag=3;          
-                    CODE_IMAGE[(*IC)+cflag+1].optype.dist_oper.val.unsign=(*runner).value;
-                    if ((*runner).is_extern){
-                        addExternSymbol(distoper,(*IC)+cflag+1,xhead,error_flag);
-                        CODE_IMAGE[(*IC)+cflag+1].are=0xE;
+                    CODE_IMAGE[(*IC)+operand_cnt+1].flag=DIST_OPERAND_FLAG;          
+                    CODE_IMAGE[(*IC)+operand_cnt+1].optype.dist_oper.val.unsign=(*link).value;
+                    if ((*link).is_extern){
+                        addExternSymbol(distoper,(*IC)+operand_cnt+1,extern_head,error_flag);  /* add to external table */
+                        CODE_IMAGE[(*IC)+operand_cnt+1].are=0xE;        /*External */
                     } else
-                        CODE_IMAGE[(*IC)+cflag+1].are=0xC;
+                        CODE_IMAGE[(*IC)+operand_cnt+1].are=0xC;        /*Relocatble */
                 } else {
-                    printf("*** Error in line: %d, Symbol %s given as second operand wasnt found in symbol table ***\n",statement_cnt,oper);
-                    *error_flag=3;
+                    printf("*** Error in line: %d, Symbol %s given as second operand wasn't found in symbol table ***\n",statement_cnt,oper);
+                    *error_flag=ERROR;
                 }
             }
-            if((distoper[0]=='%') && (order==9 || order==10 || order==11)){
-                runner = get_symbol(distoper+1,head);                
-                if(runner){
+            if((distoper[0]=='%') && (order==9 || order==10 || order==11)){  /* label case with relative addressing for destination operand */
+                link = get_symbol(distoper+1,head);                
+                if(link){
                     CODE_IMAGE[(*IC)].optype.operator.dist_add=ADD_REL;
-                    CODE_IMAGE[(*IC)+1].flag=3;          
-                    CODE_IMAGE[(*IC)+1].optype.dist_oper.val.sign=(*runner).value-((*IC)+101);
-                    CODE_IMAGE[(*IC)+1].are=0xA;
+                    CODE_IMAGE[(*IC)+1].flag=DIST_OPERAND_FLAG;          
+                    CODE_IMAGE[(*IC)+1].optype.dist_oper.val.sign=(*link).value-((*IC)+101);
+                    CODE_IMAGE[(*IC)+1].are=0xA;                    /*Absolute */
                 } else {
                     printf("*** Error in line: %d, Symbol %s given as operand wasnt found in symbol table ***\n",statement_cnt,oper);
-                    *error_flag=3;
+                    *error_flag=ERROR;
                 }
             }
-            cflag++;
+            operand_cnt++;
     }
-    *IC=*IC+1+cflag;
-    return 0;
-}
-
-/* add data to data image and DC+(length of data) */
-int addBinaryData(MachineOrder CODE_IMAGE[], int IC,Operand DATA_IMAGE[],int DC){
-    CODE_IMAGE[IC].are=0xA;
-    CODE_IMAGE[IC].flag=2;
-    CODE_IMAGE[IC].optype.src_oper.val.sign=DATA_IMAGE[DC].val.sign;  
+    if(*error_flag==ERROR)
+        return FALSE;
+    *IC=*IC+1+operand_cnt;
     return TRUE;
 }
 
-
-
-
+/** ------------------------------------------------------------*
+ *  Transfers data from Data Image to the end of Code Image.    *
+ *                                                              *
+ *  @param	CODE_IMAGE		Array of structs representing orders*
+ *  @param	IC				Code counter(counter-100) for index *
+ *  @param	DATA_IMAGE		Array of unions - operands image    *
+ *  @param	DCF 		    Total Code Counter                  *
+ *  @return TRUE(1) if change was made, FALSE(0) if found Errors*
+ *--------------------------------------------------------------*/
+int addBinaryData(MachineOrder CODE_IMAGE[], int IC, Operand DATA_IMAGE[], int DCF){
+    int d=0;
+    while(d<DCF){
+    	CODE_IMAGE[IC].are=0xA;
+    	CODE_IMAGE[IC].flag=INFO_FLAG;
+    	CODE_IMAGE[IC].optype.information.val.sign=DATA_IMAGE[d].val.sign;  
+		IC++;
+		d++;
+	}
+    return TRUE;
+}

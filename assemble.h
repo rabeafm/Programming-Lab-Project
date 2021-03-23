@@ -1,3 +1,5 @@
+#ifndef _ASSEM_
+#define _ASSEM_
 /** ------------------------------------------------------------*
  * Main Definitions & Declarations file included in assemble.c  *
  * / files.c / passes.c                                     	*
@@ -15,10 +17,6 @@
 #define MAX_DIGITS 5 /* Max Number of digits in 12 bits - used for adding data */
 #define CODE_BEGIN 100
 #define DATA_BEGIN 0
-#define OPERATOR_FLAG 1
-#define SRC_OPERAND_FLAG 2
-#define DIST_OPERAND_FLAG 3
-
 
 /*  files.c Functions   */
 int readFile(char *);
@@ -37,4 +35,6 @@ int makeFirstBinary(int, MachineOrder *, int, char *, char *, char *, int *);
 
 /*      second pass      */
 int makeSecondBinary(int ,MachineOrder [], int *, char *, char *, char *,Tlinkptr *,Tlinkptr *, int *);
-int addBinaryData(MachineOrder [],int, Operand [], int);
+int addBinaryData(MachineOrder [], int, Operand [], int);
+
+#endif
